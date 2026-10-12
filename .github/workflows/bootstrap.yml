@@ -1,0 +1,20 @@
+name: bootstrap
+
+# Thin caller. Run once, by hand, from the Actions tab after this lands on the
+# default branch: it creates the labels and reports the exact check names to
+# put in the branch protection rule.
+#
+# Re-run it after picking up a factory release that adds one. It is idempotent,
+# and a label the preflight matches on but the repository does not have is a
+# mechanism that fails silently.
+#
+# workflow_dispatch only. Nothing about this should happen automatically.
+#
+# Pinned to a release, like the other callers. See ci.yml for why.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    uses: chamaya00/agent-factory/.github/workflows/bootstrap.yml@v1.40.0

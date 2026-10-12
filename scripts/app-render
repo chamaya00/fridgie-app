@@ -1,0 +1,212 @@
+#!/bin/sh
+# Build this repository, serve it, and photograph one route of it - so a role can
+# look at the thing rather than at a drawing of the thing.
+#
+# Contract, fixed by the factory. A project may reimplement the whole of this
+# file, and several will have to - what may not change is the interface:
+#
+#   ./scripts/app-render <route> <out-dir>
+#
+#   - <route> is a path the served site answers on, `/` or `/about` or
+#     `/index.html`. Not a file path on disk and not a full URL.
+#   - writes <out-dir>/<slug>-wide.png and <out-dir>/<slug>-narrow.png, where
+#     the slug comes from the route: `/` is `index`, `/a/b` is `a-b`
+#   - exits 0 only when both files exist and are non-empty
+#   - exits non-zero with a message naming what was missing otherwise
+#
+# The two widths are `design-render`'s two widths, and that is the whole point of
+# reusing them: a mock and the built page photographed at the same widths are two
+# pictures a person can put side by side, which is what a criterion saying
+# "matches the mock" is asking someone to do.
+#
+# Why this exists next to `design-render` rather than inside it. `design-render`
+# opens an absolute `file://` URL, which is right for a self-contained mock and
+# useless for a built page: a page that loads anything from a root-absolute path
+# resolves it against the filesystem root under `file://` and quietly renders
+# without its own stylesheet or bundle. A role checking its work against that
+# picture is looking at a page that never mounted. That happened - a card shipped
+# with none of its content, marked as compared against the mock, and reached
+# review twice before an eye that could open a browser found it. A served origin
+# is the difference, and serving is the only thing this adds.
+#
+# The two lines below are the project's to fill in, and nothing in the plugin can
+# fill them in: what builds this repository and where it builds to is exactly the
+# kind of thing the factory refuses to assume. Until they are filled in this
+# script refuses, loudly, naming them - which is the honest version of a command
+# that cannot work rather than a picture of a blank page.
+
+set -eu
+
+# What builds this repository. Empty means nothing needs building - a static site
+# already in the tree, say. Whatever this is, it has to be a command the engineer
+# and designer roles are also allowed to run, or a run will be refused it even
+# though this script is granted: the allowlist is per command, not per script.
+BUILD_CMD=""
+
+# The directory the built site is served from. This is what the route resolves
+# against, so it has to be the directory holding the built entry point.
+SERVE_DIR=""
+
+WIDE_SIZE="1280,900"
+NARROW_SIZE="375,812"
+PORT="${APP_RENDER_PORT:-8765}"
+
+usage() {
+    echo "usage: $0 <route> <out-dir>" >&2
+    exit 2
+}
+
+[ $# -eq 2 ] || usage
+
+route=$1
+out_dir=$2
+
+case $route in
+    /*) : ;;
+    *)  route="/$route" ;;
+esac
+
+if [ -z "$SERVE_DIR" ]; then
+    echo "app-render: SERVE_DIR is empty, so there is nothing to serve." >&2
+    echo "  Open scripts/app-render and set BUILD_CMD and SERVE_DIR to what" >&2
+    echo "  builds this repository and where it builds to. Both are this" >&2
+    echo "  project's to decide; the interface above is not." >&2
+    echo "  Until then, no role can see this repository rendered, and a run" >&2
+    echo "  told to compare a page against a mock should say so rather than" >&2
+    echo "  describing a page nobody has opened." >&2
+    exit 1
+fi
+
+if [ -n "$BUILD_CMD" ]; then
+    echo "app-render: building with: $BUILD_CMD" >&2
+    # Unquoted on purpose: BUILD_CMD is a command line, written into this file by
+    # whoever owns the project, not input from anywhere.
+    # shellcheck disable=SC2086
+    sh -c "$BUILD_CMD" >&2
+fi
+
+[ -d "$SERVE_DIR" ] || {
+    echo "app-render: SERVE_DIR is set to '$SERVE_DIR', which is not a directory." >&2
+    echo "  Either the build did not run or it writes somewhere else." >&2
+    exit 1
+}
+
+# First browser on PATH wins, exactly as design-render does it. Names only, no
+# versions and no packages: this asks what the image already has.
+browser=""
+for candidate in chromium chromium-browser google-chrome google-chrome-stable chrome; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        browser=$candidate
+        break
+    fi
+done
+
+if [ -z "$browser" ]; then
+    echo "app-render: no headless browser on PATH." >&2
+    echo "  Looked for: chromium, chromium-browser, google-chrome," >&2
+    echo "              google-chrome-stable, chrome" >&2
+    echo "  Either make one available, or replace scripts/app-render with" >&2
+    echo "  something that honours the same interface." >&2
+    exit 1
+fi
+
+# A static server, asked for rather than installed. Any of these serves a
+# directory over one origin, which is the whole requirement.
+server_cmd=""
+if command -v python3 >/dev/null 2>&1; then
+    server_cmd="python3 -m http.server $PORT --bind 127.0.0.1 --directory $SERVE_DIR"
+elif command -v python >/dev/null 2>&1; then
+    server_cmd="python -m http.server $PORT --bind 127.0.0.1 --directory $SERVE_DIR"
+elif command -v busybox >/dev/null 2>&1; then
+    server_cmd="busybox httpd -f -p 127.0.0.1:$PORT -h $SERVE_DIR"
+else
+    echo "app-render: no static server on PATH." >&2
+    echo "  Looked for: python3, python, busybox" >&2
+    echo "  A served origin is the point of this script - a built page opened" >&2
+    echo "  as a file:// URL resolves its own bundle against the filesystem" >&2
+    echo "  root and renders without it, which looks like a design fault and" >&2
+    echo "  is not one. Either make one available, or replace this file." >&2
+    exit 1
+fi
+
+server_pid=""
+cleanup() {
+    [ -n "$server_pid" ] && kill "$server_pid" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+# shellcheck disable=SC2086
+$server_cmd >/dev/null 2>&1 &
+server_pid=$!
+
+# Wait for the port to answer rather than sleeping a guess. A shutter that opens
+# before the server does photographs an error page, and an error page is a
+# picture: it is committed, it is looked at, and it says nothing about the design.
+ready=""
+i=0
+while [ "$i" -lt 50 ]; do
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsS -o /dev/null "http://127.0.0.1:$PORT$route" 2>/dev/null && ready=yes
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O /dev/null "http://127.0.0.1:$PORT$route" 2>/dev/null && ready=yes
+    else
+        # Neither fetcher present: give the server a moment and let the picture
+        # be the test, which it is in either case.
+        sleep 2
+        ready=unchecked
+    fi
+    [ -n "$ready" ] && break
+    kill -0 "$server_pid" 2>/dev/null || break
+    i=$((i + 1))
+    sleep 0.2 2>/dev/null || sleep 1
+done
+
+if [ -z "$ready" ]; then
+    echo "app-render: nothing answered on http://127.0.0.1:$PORT$route" >&2
+    echo "  Server command: $server_cmd" >&2
+    echo "  Route: $route - check it exists in $SERVE_DIR, and that the port" >&2
+    echo "  is free (override it with APP_RENDER_PORT)." >&2
+    exit 1
+fi
+
+# `/` is index, `/a/b/` is a-b, `/about.html` is about. A slug rather than the
+# route so the two pictures sit beside a mock's two in the same directory.
+slug=$(printf '%s' "${route#/}" | sed -e 's/[?#].*$//' -e 's#/*$##' -e 's/\.html$//' -e 's#/#-#g')
+[ -n "$slug" ] || slug=index
+
+mkdir -p "$out_dir"
+
+shoot() {
+    size=$1
+    suffix=$2
+    target="$out_dir/$slug-$suffix.png"
+
+    # The flags are design-render's, for design-render's reasons: no sandbox
+    # because this normally runs as root in a container, and a virtual time
+    # budget so webfonts, transitions and anything on a timer settle before the
+    # shutter rather than being photographed mid-load.
+    "$browser" \
+        --headless \
+        --disable-gpu \
+        --no-sandbox \
+        --hide-scrollbars \
+        --force-device-scale-factor=2 \
+        --virtual-time-budget=3000 \
+        --window-size="$size" \
+        --screenshot="$target" \
+        "http://127.0.0.1:$PORT$route" >/dev/null 2>&1 || true
+
+    # The browser's own exit status is not evidence; the file is. A zero-byte png
+    # is what a failed capture leaves behind.
+    if [ ! -s "$target" ]; then
+        echo "app-render: $browser produced no picture at $target" >&2
+        echo "  URL: http://127.0.0.1:$PORT$route" >&2
+        echo "  Rerun without the output suppressed to see what it said." >&2
+        exit 1
+    fi
+
+    echo "$target"
+}
+
+shoot "$WIDE_SIZE" wide
+shoot "$NARROW_SIZE" narrow

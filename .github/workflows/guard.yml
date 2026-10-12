@@ -1,0 +1,34 @@
+name: guard
+
+# Thin caller. Keeps repo memory inside its cap and keeps agents out of the
+# files that gate the repo.
+#
+# Pinned to a release, like the other callers. See ci.yml for why.
+
+on:
+  push:
+    branches: [main]
+  # `edited` is the one that matters here; the other three are the default set,
+  # written out because naming `types` at all replaces that default rather than
+  # adding to it.
+  #
+  # The job this caller runs reads the pull request *body*, for the line
+  # starting `Privilege change:` that a widening diff has to carry. Without
+  # `edited` the only events are opened, synchronize and reopened - so a body
+  # corrected after the guard has already rejected it cannot re-run the guard
+  # that reads it. The author is left with a manual re-run from the Actions
+  # tab, or an empty commit, and the house rules forbid the second by name.
+  #
+  # Found the hard way on a real update: the declaration was written wrapped in
+  # backticks, so it did not start the line, and the guard failed exactly as it
+  # should. Fixing the body then changed nothing, because nothing was listening
+  # for the fix.
+  #
+  # The cost is that editing a title re-runs it too. That job takes seconds and
+  # spends no model budget, so this is the cheap side of the trade.
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  guard:
+    uses: chamaya00/agent-factory/.github/workflows/project-guard.yml@v1.40.0

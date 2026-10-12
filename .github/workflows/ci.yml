@@ -1,0 +1,116 @@
+name: ci
+
+# Thin caller: the logic lives in the factory, at the release pinned below.
+#
+# The pin is the point. This repository keeps running that exact release until
+# somebody bumps the line and merges it - a new release in the factory changes
+# nothing here on its own. `/update-agents` proposes the bump as a pull
+# request, so the diff gets read here before it runs here.
+#
+# ---------------------------------------------------------------------------
+# This ships as a placeholder gate, and it is meant to be replaced.
+#
+# A project gets its gate before it gets its stack. The reusable workflow's
+# Node path fails a named script that is not there rather than skipping it,
+# which is correct and which would make every pull request here red from the
+# provisioning one onward, before a line of product code exists. So the
+# commands path below checks the only thing that is true on day one: that the
+# scaffolding a session and an agent run both read is intact.
+#
+# The last line is a tripwire, and it is the part that matters. The moment a
+# file appears that provisioning did not put here, product code has landed and
+# this gate does not test it - so the gate fails and says so, rather than going
+# green on work nothing checked. A gate that silently skips is not a gate, and
+# the failure mode this exists to stop is a placeholder nobody remembered to
+# replace, passing every pull request on its way to a release.
+#
+# Replace it as soon as the stack is chosen. `check-name` stays `checks`
+# through the swap and that is deliberate: the job name is the string branch
+# protection matches on, so a gate that renames itself when it grows up forces
+# the rule to be re-pointed - and until somebody does, the required check no
+# longer reports and every merge is blocked, including the pull request that
+# would fix it. One stable name means protection is set once, at provisioning,
+# and never touched again. What the gate runs is in the run summary, where it
+# can change as often as it likes.
+#
+# So the swap is only ever about what runs. For a Node project, delete
+# `commands` and restore:
+#
+#     with:
+#       check-name: 'checks'
+#       node-version: '20'
+#       checks: 'typecheck,lint,test,build'
+#
+# Provisioning onto a repository that already has those four scripts skips all
+# of this and starts on the Node path.
+#
+# `scripts/` is listed among the provisioned paths because provisioning puts the
+# role entry points there - `design-render`, `app-render`, `contrast`. It was
+# not, and that is a bug this gate had from the day the first of them shipped:
+# every repository provisioned since carried a file the tripwire read as product
+# code, so the placeholder gate failed on the provisioning pull request itself.
+# The execute bits are checked here for the same reason the gate exists: a role
+# is told these names, and a script without the bit is present, silent, and
+# indistinguishable from one that ran.
+#
+# Before you make the swap, answer one question: what publishes this
+# repository, and does the gate below run it?
+#
+# It is asked here rather than at provisioning because here it is answerable.
+# A repository being provisioned has no stack and no deploy target, so the
+# honest answer there was always "not sure yet" - and a question whose answer
+# is reliably "I do not know" trains everyone to skip it. You are reading this
+# because the project became real enough to need a gate, which is exactly when
+# somebody knows.
+#
+# A gate runs the commands the project chose; production runs whatever the
+# hosting platform chose. Those are two programs, and nothing measures the
+# distance between them unless somebody looks. A repository once had a gate
+# that was green on every pull request for nineteen hours while the thing that
+# publishes it failed on all eight merges, because the two builds did not agree
+# on what the site even consisted of.
+#
+# Three honest answers, in order of preference. The gate already runs what
+# publishes it - say so in the pull request making this swap, and it is
+# settled. It does not, but it can - change the commands so it does. It cannot,
+# because the platform builds somewhere this gate cannot reach - then say so in
+# an ADR: what publishes it, how that differs from the gate, and what covers
+# the gap. The scheduled sweep reports a red default branch, so the gap is
+# bounded in time rather than unbounded, and the ADR is what tells the next
+# reader that bound is the whole of the protection.
+#
+# What is not acceptable is not answering. An unstated assumption here is
+# invisible until it has been wrong for a day.
+#
+# Where that swap is made still matters. What trips the tripwire is the first
+# engineer pull request, and an agent may not edit this file, so a human makes
+# the change. Making it on the default branch fails on the Node path, whose
+# first step is to find a lockfile that is in that pull request rather than on
+# the default branch yet. Push the replacement onto the engineer's pull request
+# branch instead: the commands run against the code that needs them, and the
+# default branch stays green from the first commit.
+#
+# If the project has no package manager - a static site, a shell tool, anything
+# the commands path exists for - then this path is the destination rather than a
+# waypoint. Keep `commands` and replace the scaffolding checks in it with the
+# project's real ones, leaving `check-name` alone.
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.40.0
+    with:
+      check-name: 'checks'
+      commands: |
+        test -f CLAUDE.md
+        test -f .claude/agent-factory.json
+        test -d .claude/agents && test -d .claude/skills && test -d .claude/commands
+        test -d docs/research && test -d docs/design && test -d docs/decisions
+        test -d docs/memory
+        test -x scripts/design-render && test -x scripts/app-render && test -x scripts/contrast
+        unexpected="$(git ls-files | grep -Ev '^(README\.md|CLAUDE\.md|\.github/|\.claude/|docs/|scripts/)' || true)"; if [ -n "$unexpected" ]; then echo "::error::Product code has landed and this placeholder gate does not test it: $unexpected. Replace the commands below with the project's real checks - see the comment at the top of this file. Branch protection does not need re-pointing; the check name does not change."; exit 1; fi

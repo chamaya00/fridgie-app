@@ -1,0 +1,80 @@
+name: agent-run
+
+# Thin caller. One agent at a time, queued at the repo level by the factory
+# workflow, capped in turns and minutes.
+#
+# Pinned to a release, like the other callers. See ci.yml for why.
+#
+# Requires the repository secret CLAUDE_CODE_OAUTH_TOKEN. The App id and key
+# are optional but strongly preferred: without them, pull requests land in an
+# approval-required state and every one has to be approved by hand.
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  # A merge is a wake. Every role opens a pull request and a human merges it
+  # later, so an objective learns a child finished but never that its work
+  # landed - and landing is what makes the next child ready.
+  # The factory workflow handles this event in its own job and refuses to
+  # spend a run on the pull request itself.
+  pull_request:
+    types: [closed]
+  # Nothing ever noticed that nothing was happening. Every fault this system
+  # has had looked the same from outside: an issue correctly labelled, no run
+  # against it, and no log saying so. The factory workflow uses this tick to
+  # say so out loud; it re-queues nothing.
+  #
+  # Twice a day, and the number is a project's to change. What this catches
+  # is work that is stuck, and stuck work stays stuck - the gap between
+  # hearing in thirty minutes and hearing in twelve hours is nearly nothing
+  # when a person checks in a few times a day, and during a session that
+  # person is watching anyway. A tighter tick bought the least exactly when
+  # it fired most.
+  #
+  # Cost is why the default moved rather than staying tight. A tick runs one
+  # job for a few seconds and spends no model budget - the agent job is
+  # skipped on a schedule event - so on a public repository it is free. On a
+  # private one every tick is a billed minute, and the old cadence was 1,440
+  # a month for one project, most of a free tier, whether or not the project
+  # was still being worked on.
+  #
+  # An event would beat any poll: nothing while nothing happens, immediate
+  # when something does. `check_suite` was the candidate and it does not work
+  # - check suites raised by Actions do not start runs, which is the same
+  # recursion guard that makes the agent App mandatory. Tested rather than
+  # assumed, because a watchdog wired to an event that never arrives reads as
+  # coverage while providing none. Until something replaces it, this tick is
+  # the whole of the coverage.
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+    inputs:
+      issue-number:
+        description: Issue to work.
+        required: true
+        type: string
+
+jobs:
+  agent:
+    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.40.0
+    with:
+      issue-number: ${{ inputs.issue-number || '' }}
+      max-turns: 80
+      timeout-minutes: 30
+      # No `model:` line on purpose. Left out, every role gets the model the
+      # factory resolves for it, which is not the same for all of them - the
+      # reasoning is in the factory's own agent-run.yml, next to the allowlist
+      # each role gets, and it moves when a release moves it.
+      #
+      # Setting this pins every role in this repository to one model and
+      # overrides all of that. Worth doing to economise, or to ask whether a
+      # model change explains a change in output. Not worth doing otherwise,
+      # and a value left here after the question it answered will not be
+      # noticed again - it fails nothing, it just quietly stops the repository
+      # tracking what the factory learns.
+    secrets:
+      claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      app-id: ${{ secrets.AGENT_APP_ID }}
+      app-private-key: ${{ secrets.AGENT_APP_PRIVATE_KEY }}

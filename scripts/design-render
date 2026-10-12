@@ -1,0 +1,118 @@
+#!/bin/sh
+# Render a design mock to pictures, so the role that specified it can look at
+# what it actually made.
+#
+# Contract, fixed by the factory. A project may reimplement the whole of this
+# file, and several will have to - what may not change is the interface:
+#
+#   ./scripts/design-render <mock.html> <out-dir>
+#
+#   - reads one self-contained page, normally under docs/design/
+#   - writes <out-dir>/<name>-wide.png and <out-dir>/<name>-narrow.png
+#   - exits 0 only when both files exist and are non-empty
+#   - exits non-zero with a message naming what was missing otherwise
+#
+# The two widths are not arbitrary. They are the two a reviewer is asked to
+# compare in the acceptance-criteria skill, so a mock that renders at both is a
+# mock a visual criterion can actually be written against.
+#
+# Why the contract is a path in this repository rather than a capability in the
+# shared plugin: the plugin describes how we work and stays free of any one
+# vendor's name, and a rendering tool is a vendor choice with a cost, a
+# credential in some cases, and a decision record behind it. Keeping the
+# implementation here means a project picks its own - a browser already on the
+# runner, a container, a hosted service - and the role that calls it never
+# learns which. Swap the body of this file; leave the interface alone.
+#
+# This default deliberately adds no dependency. It drives a headless browser
+# that is already present on most CI images. A project whose image has none
+# either installs one (its own decision record) or replaces this file. Either
+# way the failure below is loud, which is the point: a design run that cannot
+# render says so in its pull request, and a reviewer supplies the eyes instead.
+
+set -eu
+
+WIDE_SIZE="1280,900"
+NARROW_SIZE="375,812"
+
+usage() {
+    echo "usage: $0 <mock.html> <out-dir>" >&2
+    exit 2
+}
+
+[ $# -eq 2 ] || usage
+
+mock=$1
+out_dir=$2
+
+[ -f "$mock" ] || { echo "design-render: no such file: $mock" >&2; exit 1; }
+
+# An absolute file: URL. A relative path resolves against the browser's own
+# working directory, which is not this one, and the failure is a blank picture
+# rather than an error - the worst shape a failure can take here, because it
+# renders, it is committed, and it looks like a design nobody liked.
+case $mock in
+    /*) mock_abs=$mock ;;
+    *)  mock_abs=$(pwd)/$mock ;;
+esac
+
+name=$(basename "$mock" .html)
+mkdir -p "$out_dir"
+
+# First browser on PATH wins. Names only, no versions and no packages: this is
+# asking what the image already has, not asking for anything to be installed.
+browser=""
+for candidate in chromium chromium-browser google-chrome google-chrome-stable chrome; do
+    if command -v "$candidate" >/dev/null 2>&1; then
+        browser=$candidate
+        break
+    fi
+done
+
+if [ -z "$browser" ]; then
+    echo "design-render: no headless browser on PATH." >&2
+    echo "  Looked for: chromium, chromium-browser, google-chrome," >&2
+    echo "              google-chrome-stable, chrome" >&2
+    echo "  Either make one available, or replace scripts/design-render with" >&2
+    echo "  something that honours the same interface. Until then no mock in" >&2
+    echo "  this repository can be rendered, and a design run should say so" >&2
+    echo "  rather than describing a look nobody has seen." >&2
+    exit 1
+fi
+
+shoot() {
+    size=$1
+    suffix=$2
+    target="$out_dir/$name-$suffix.png"
+
+    # --no-sandbox because this normally runs as root in a container, where the
+    # sandbox cannot start. --virtual-time-budget lets webfonts, transitions,
+    # and anything scheduled on a timer settle before the shutter: without it
+    # the picture is of a page mid-load, which reads as a design flaw.
+    "$browser" \
+        --headless \
+        --disable-gpu \
+        --no-sandbox \
+        --hide-scrollbars \
+        --force-device-scale-factor=2 \
+        --virtual-time-budget=3000 \
+        --window-size="$size" \
+        --screenshot="$target" \
+        "file://$mock_abs" >/dev/null 2>&1 || true
+
+    # The browser's own exit status is not evidence. Headless Chrome-family
+    # binaries exit 0 on a good many failures that produce no file at all, so
+    # the file is the test, and its size is part of the test - a zero-byte png
+    # is what a failed capture leaves behind.
+    if [ ! -s "$target" ]; then
+        echo "design-render: $browser produced no picture at $target" >&2
+        echo "  Mock: $mock_abs" >&2
+        echo "  Rerun without the output suppressed to see what it said." >&2
+        exit 1
+    fi
+
+    echo "$target"
+}
+
+shoot "$WIDE_SIZE" wide
+shoot "$NARROW_SIZE" narrow

@@ -1,0 +1,48 @@
+{
+  "$comment": "What this repository took from the factory, and when. /update-agents reads the version here, compares it against the factory release you name, and proposes the difference as a pull request. The roles in .claude/agents/, the skills in .claude/skills/, and the commands in .claude/commands/ are the real thing; this is the record of where they came from. One field is read at run time: `labels` is the vocabulary this release's preflight matches on, and the session-start hook compares it against the labels the repository actually has - because only `bootstrap` creates a label, and only a person can run `bootstrap`.",
+  "version": "v1.40.0",
+  "labels": [
+    "objective",
+    "agent:queued",
+    "agent:running",
+    "agent:review",
+    "agent:blocked",
+    "agent:needs-input",
+    "agent:revise",
+    "needs-decomposition",
+    "needs-human",
+    "role:researcher",
+    "role:analyst",
+    "role:designer",
+    "role:engineer"
+  ],
+  "roles": [
+    "orchestrator",
+    "researcher",
+    "analyst",
+    "designer",
+    "engineer"
+  ],
+  "skills": [
+    "house-rules",
+    "memory-protocol",
+    "acceptance-criteria",
+    "driving-an-objective",
+    "briefing",
+    "design-craft",
+    "research-craft",
+    "instrumentation"
+  ],
+  "commands": [
+    "objective",
+    "retro",
+    "decompose",
+    "update-agents",
+    "ship",
+    "check-in",
+    "self-driving"
+  ],
+  "hooks": [
+    "session-start"
+  ]
+}

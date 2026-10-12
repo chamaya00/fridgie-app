@@ -1,0 +1,114 @@
+#!/bin/sh
+# Print the contrast ratio between two colours, so a criterion about one can be
+# checked rather than asserted.
+#
+# Contract, fixed by the factory. A project may reimplement the whole of this
+# file - what may not change is the interface:
+#
+#   ./scripts/contrast <foreground-hex> <background-hex> [minimum]
+#
+#   - takes two colours as #rrggbb or #rgb, with or without the leading #
+#   - prints the ratio to stdout, one line, two decimal places, nothing else
+#   - exits 0 when the ratio is computed
+#   - with a third argument, exits 1 when the ratio is below it and says so on
+#     stderr, which is what lets an acceptance criterion be a command
+#   - exits 2 on a colour it cannot read
+#
+# Why this exists as a command rather than as arithmetic the role does. A visual
+# criterion that says "readable" is not checkable, so the criteria this system
+# writes say "at least 4.5:1" instead - and no role holds a general-purpose
+# interpreter, deliberately, because a role that can run any command can rewrite
+# the gates it is checked by. That left a designer applying the relative
+# luminance formula by hand to eight colour pairs, in prose, in a pull request.
+# It was right to within 0.05 on every one of them, and that is the problem: an
+# agent doing long-hand floating point and happening to be right is not a
+# control, and the next one that is wrong by 0.3 ships a palette that fails
+# while every check stays green.
+#
+# The formula is WCAG 2.x relative luminance, which is a standard rather than a
+# vendor's, which is why the default implementation is here in full instead of
+# calling something out. It needs no dependency: the arithmetic is inside this
+# script, and the role that runs it holds the script and not the interpreter.
+
+set -eu
+
+usage() {
+    echo "usage: $0 <foreground-hex> <background-hex> [minimum]" >&2
+    exit 2
+}
+
+[ $# -ge 2 ] && [ $# -le 3 ] || usage
+
+fg=$1
+bg=$2
+minimum=${3:-}
+
+# `#abc` is the same colour as `#aabbcc`, and a spec writes both.
+normalise() {
+    value=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+    value=${value#\#}
+    case $value in
+        [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])
+            printf '%s' "$value"
+            ;;
+        [0-9a-f][0-9a-f][0-9a-f])
+            r=$(printf '%s' "$value" | cut -c1)
+            g=$(printf '%s' "$value" | cut -c2)
+            b=$(printf '%s' "$value" | cut -c3)
+            printf '%s%s%s%s%s%s' "$r" "$r" "$g" "$g" "$b" "$b"
+            ;;
+        *)
+            echo "contrast: not a hex colour: $1" >&2
+            echo "  Expected #rrggbb or #rgb, with or without the #." >&2
+            exit 2
+            ;;
+    esac
+}
+
+fg_hex=$(normalise "$fg")
+bg_hex=$(normalise "$bg")
+
+# awk rather than a language runtime: it is in every POSIX environment, so this
+# adds nothing to install, and it is reached through this script rather than
+# granted to the role. A project whose image somehow has none replaces the body
+# of this file and keeps the interface.
+command -v awk >/dev/null 2>&1 || {
+    echo "contrast: no awk on PATH, and the arithmetic needs one." >&2
+    echo "  Either make one available, or replace scripts/contrast with" >&2
+    echo "  something that honours the same interface." >&2
+    exit 1
+}
+
+ratio=$(awk -v fg="$fg_hex" -v bg="$bg_hex" '
+    function channel(pair) {
+        # Hex pair to the 0-1 linear value WCAG asks for.
+        n = index("0123456789abcdef", substr(pair, 1, 1)) - 1
+        m = index("0123456789abcdef", substr(pair, 2, 1)) - 1
+        c = (n * 16 + m) / 255
+        if (c <= 0.03928) return c / 12.92
+        return ((c + 0.055) / 1.055) ^ 2.4
+    }
+    function luminance(hex) {
+        return 0.2126 * channel(substr(hex, 1, 2)) \
+             + 0.7152 * channel(substr(hex, 3, 2)) \
+             + 0.0722 * channel(substr(hex, 5, 2))
+    }
+    BEGIN {
+        a = luminance(fg)
+        b = luminance(bg)
+        lighter = (a > b) ? a : b
+        darker  = (a > b) ? b : a
+        printf "%.2f\n", (lighter + 0.05) / (darker + 0.05)
+    }
+')
+
+echo "$ratio"
+
+[ -n "$minimum" ] || exit 0
+
+# The comparison is awk's too, for the reason the ratio is: a shell compares
+# integers, and every threshold worth writing has a decimal point in it.
+awk -v ratio="$ratio" -v minimum="$minimum" 'BEGIN { exit (ratio + 0 < minimum + 0) ? 1 : 0 }' || {
+    echo "contrast: $fg on $bg is $ratio, below the $minimum required." >&2
+    exit 1
+}

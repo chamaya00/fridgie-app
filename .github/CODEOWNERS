@@ -1,0 +1,10 @@
+# The gates, and who owns them. Agents may not change these files; the project
+# guard fails any pull request from anyone else that touches them.
+#
+# chamaya00 is substituted at provision time, like the version pin. A
+# literal handle here would ship to every repository provisioned afterwards and
+# name an account that owns none of them.
+
+/.github/workflows/  @chamaya00
+/.github/CODEOWNERS  @chamaya00
+/CLAUDE.md           @chamaya00
