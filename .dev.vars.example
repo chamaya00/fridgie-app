@@ -1,0 +1,6 @@
+# Copy to .dev.vars for `npm run dev`. .dev.vars is git-ignored: never commit it.
+# Real values are the owner's (ADR 0004 owner steps 5 and 6).
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+COOKIE_SECRET=
+ALLOWED_GITHUB_IDS=

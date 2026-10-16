@@ -1,0 +1,33 @@
+// The Worker as ADR 0003 and ADR 0004 configure it. This file is what deploys:
+// Workers Builds runs `npm run deploy` against it, and the gate bundles it with
+// `npm run build`. Local-only settings never go here (see .dev.vars.example).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fridgie",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fridgie",
+      // PLACEHOLDER: replace with the owner's D1 Database ID (ADR 0004 owner steps 2 and 4).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      // PLACEHOLDER: replace with the owner's KV Namespace ID (ADR 0004 owner steps 3 and 4).
+      "id": "00000000000000000000000000000000"
+    }
+  ],
+  // ALLOWED_GITHUB_IDS and the three secrets are set in the dashboard (ADR 0004
+  // owner step 6). No "vars" block here: keep_vars stops a deploy from wiping
+  // what the owner entered, and an unset allow-list lets nobody in.
+  "keep_vars": true
+}
