@@ -41,16 +41,13 @@ which is the moment somebody replaces the gate.
 
 ## Commands
 
-- Install: none yet - nothing to install until the stack is chosen.
-- Dev: none yet, for the same reason.
-- Checks CI runs: none of this project's own yet. The gate runs the scaffolding
-  checks written out in `.github/workflows/ci.yml` and nothing else.
-
-Replace all three the moment there is something to name. On a Node project that
-is `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`. On a
-project with no package manager it might be a single `bash tests/check.sh`, and
-one check is a complete answer - name what this project has rather than the
-four a Node project would have.
+- Install: `npm ci` (Node.js 24).
+- Dev: `npm run dev` (`wrangler dev`, reading local secrets from `.dev.vars`;
+  copy `.dev.vars.example`). `./scripts/app-render <route> <out-dir>`
+  photographs a route signed in, against the seed data.
+- Checks: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`,
+  in that order (ADR 0003 `## Gate commands`). None needs Cloudflare
+  credentials.
 
 The checks above are what CI runs once the gate is real. Until then it is
 not: `.github/workflows/ci.yml` ships a placeholder that checks the scaffolding
