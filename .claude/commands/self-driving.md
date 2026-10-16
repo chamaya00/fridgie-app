@@ -1,5 +1,5 @@
 ---
-description: Start a self-driving stretch - a long autonomous run, day or night, in which this session drives one or more objectives to done on the person's delegated judgment, logging every call it makes for them.
+description: Start a self-driving stretch - a long autonomous run, day or night, in which this session drives one or more objectives to done on the person's delegated judgment, logging every call it makes for them. Also what to run when the person asks in their own words for work to keep moving while they are away, overnight or for days.
 argument-hint: "[objective issues, e.g. #49 #52] [until <time or condition>]"
 ---
 
@@ -34,9 +34,13 @@ Before anything runs, have in hand:
   not merged: writing a policy is theirs alone, stretch or no stretch. Say which
   objectives this applies to.
 
-Do not start a stretch the person has not asked for. This command is the ask;
-nothing else - a scheduled wake, a pull request's activity, an earlier
-stretch's log - may begin one.
+Do not start a stretch the person has not asked for. The ask is theirs, in
+whatever words they use: this command, or "keep these moving overnight", "drive
+this through while I'm out this week", "make the calls and write them down".
+When they say something like that, it is this command - say so, and start at
+this step rather than improvising a version of it. Nothing else may begin one:
+not a scheduled wake, not a pull request's activity, not an earlier stretch's
+log.
 
 ## 2. One round of questions, then hand over
 
@@ -71,10 +75,44 @@ D2, ...): what was decided, why, the alternative, and how to reverse it.
 - **A slower recurring backstop** - about hourly - carrying the same
   instruction, in case the chain breaks.
 
-Say which reminders exist and when the first fires. If the environment has no
-durable reminder, say so plainly: the stretch then runs only as far as pull
-request events carry it, and a run that caps or blocks will sit unseen until
-the person looks. Do not imply a watch nobody is keeping.
+Those three keep this session moving. They do not outlive it, and a stretch
+that runs overnight or for days usually will. So when the stretch is meant to
+last longer than this session can be counted on - overnight, a day away, an
+open-ended "until these are done" - also set:
+
+- **A scheduled session.** A recurring routine that starts a fresh session on
+  this repository every two hours, never more often than hourly (a scheduled
+  trigger that opens a new session each time it fires - `create_trigger`, where
+  there is one), push notifications on, named `self-driving: <owner/repo>
+  #<log>`. Its message, with the blanks filled:
+
+  > Read issue #<log> in this repository first. It records a self-driving
+  > stretch the person started, what they delegated, their answers, and every
+  > call made so far; you are continuing it under exactly that delegation, not
+  > starting a new one. Run /check-in on <objectives>, dispatching what is
+  > queued where .claude/agent-factory.json says runner is session, and log
+  > every call on #<log> as the stretch does. If <end> has passed or every
+  > objective is closed, close the stretch out as .claude/commands/self-driving.md
+  > step 7 says, turn this routine off, and stop. End with at most three lines:
+  > what moved, what is waiting on the person, and the link to read first.
+
+  Record the routine's id on the decision log, so any later session can find it
+  and stop it. A session the routine started can turn it off but may not be
+  able to delete it - deleting a routine can take its own sessions with it - so
+  the message says off, and the next session the person opens deletes it.
+  One per stretch: two are two sessions racing for the same queued issue, and
+  `agent:running` is the only lock between them.
+
+Where the runner is `session`, that scheduled session is not optional for a
+stretch longer than this one. Nothing else starts a run while no session is
+open, so without it the stretch stops the moment this session does, and the
+objectives sit queued until the person comes back.
+
+Say which wakes exist and when each first fires. If the environment has no
+durable reminder or no way to schedule a session, say so plainly: the stretch
+then runs only as far as this session and pull request events carry it, and a
+run that caps or blocks will sit unseen until the person looks. Do not imply a
+watch nobody is keeping.
 
 ## 5. Keep a ledger
 
@@ -91,6 +129,13 @@ objective, a turn-cap ending read as a budget finding, and a question a role
 raises answered on the record when the delegation covers it and carried to the
 log when it does not.
 
+Where `.claude/agent-factory.json` says `runner` is `session`, the runs are
+this stretch's too: every wake dispatches what is queued, per step 4 of
+`/check-in`. Whether a run goes to a child session is the call `/dispatch`
+describes, and a stretch is where it most often pays - a long build in a child
+session leaves this one free to answer a pull request's events. Say in the
+ledger which child session holds which issue.
+
 ## 7. Close out
 
 When every objective is closed, the stated end arrives, or the person says
@@ -100,7 +145,9 @@ stop:
   left for their hands. An objective still open gets the same report, saying
   where it stopped and what the next wake would have done.
 - A closing comment on the decision log listing what is still theirs.
-- Every reminder deleted, and every subscription that no longer has an open
-  pull request behind it dropped.
+- Every reminder deleted, the scheduled session turned off - deleted, where
+  this is not a session it started - and every subscription that no longer has
+  an open pull request behind it dropped. A routine left running after its
+  stretch keeps opening sessions that spend the subscription on nothing.
 - One message to the person saying all of that in a few lines, and that nothing
   is running any more.

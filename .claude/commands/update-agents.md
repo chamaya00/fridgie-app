@@ -56,8 +56,8 @@ Read these out of the factory at `$1`:
 - `agents/*.md` - every role
 - `skills/*/SKILL.md` - every skill
 - `commands/objective.md`, `retro.md`, `decompose.md`, `update-agents.md`,
-  `ship.md`, `check-in.md`, `self-driving.md` - the commands a project gets. Not
-  `new-project.md`, which stays in the factory.
+  `ship.md`, `check-in.md`, `self-driving.md`, `dispatch.md` - the commands a
+  project gets. Not `new-project.md`, which stays in the factory.
 
 Compare each against the copy in `.claude/agents/`, `.claude/skills/`, and
 `.claude/commands/`. Note which are new, which changed, and which exist here
@@ -91,8 +91,8 @@ So compare each caller against its template in the release at
 two halves differently:
 
 - **The `on:` block and the `uses:` line are the factory's.** Bring them to the
-  template's shape, substituting `$1` for `v1.40.0` and the factory
-  repository for `chamaya00/agent-factory`. A trigger the template has and the caller
+  template's shape, substituting `$1` for `__FACTORY_VERSION__` and the factory
+  repository for `__FACTORY_REPO__`. A trigger the template has and the caller
   does not is a trigger the release needs.
 
   Substitute the factory repository this repository is already on - the one you
@@ -131,7 +131,11 @@ If nothing at all differs, say so and stop.
 
 One branch, one commit, one pull request:
 
-- `mcp__github__create_branch` from the default branch
+- `mcp__github__create_branch` from the default branch, named
+  `update-agents/<version>` - not `claude/...`. This pull request changes the
+  roles, the commands, and the workflow callers, which are exactly the paths
+  `project-guard` refuses from an agent branch; a session opens it as the
+  person, and the branch name is what tells the guard this one is theirs.
 - `mcp__github__push_files` with every changed file in a single commit
 - `mcp__github__create_pull_request`
 
@@ -150,6 +154,17 @@ What goes in the commit:
   than being a record of it: the session-start hook compares it against the
   labels the repository really has, so a stale copy is a hook reporting the
   wrong thing rather than one reporting nothing.
+
+  `runner` is the repository's, not the release's: keep the value it has. A
+  manifest with no `runner` predates the field and has been running its agents
+  in Actions, so write `"runner": "actions"` - unless the person asked to move
+  to sessions, in which case write `"session"` and say in the body what that
+  changes: the agent-run workflow stands down, sessions start the runs through
+  `/dispatch`, work moves only while a session is open unless a self-driving
+  stretch is keeping one going, and the `CLAUDE_CODE_OAUTH_TOKEN` secret is no
+  longer read.
+  Never flip it on your own reading of what would be better. Which runner
+  spends the subscription is the person's call.
 
 Leave alone, always:
 

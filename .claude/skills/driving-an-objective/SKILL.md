@@ -1,6 +1,6 @@
 ---
 name: driving-an-objective
-description: How an interactive session drives an objective it filed or was pointed at - the technical judgment it owns, what it may reject and how, what to read and what not to, adopting the merge policy, and surfacing what only the person can decide. Use whenever an objective is in play, a child reaches review, a pull request is waiting, a session is catching up on what happened while nobody was watching, one session is driving several objectives at once, or the person has started a self-driving stretch - a long autonomous run, day or night, in which they have handed over the calls.
+description: How an interactive session drives an objective it filed or was pointed at - the technical judgment it owns, what it may reject and how, what to read and what not to, adopting the merge policy, and surfacing what only the person can decide. Use whenever an objective is in play, a child reaches review, a queued run is waiting for a session to start it, a pull request is waiting, a session is catching up on what happened while nobody was watching, one session is driving several objectives at once, or the person has started a self-driving stretch - a long autonomous run, day or night, in which they have handed over the calls - including when they ask for one in their own words.
 ---
 
 # Driving an objective
@@ -234,6 +234,38 @@ resumed, a fresh one, or one woken by `/check-in` - actually reads first. A
 hard blocker sitting only in scrollback is indistinguishable, from outside,
 from one that was never raised.
 
+## Where the runs happen
+
+`.claude/agent-factory.json` names the runner, and it decides one thing: who
+starts a run.
+
+- **`actions`.** A label starts the agent-run workflow, which books the run,
+  runs the role, and hands it back. You queue and you read; you never start a
+  role yourself.
+- **`session`.** Nothing starts a run but a session, and in practice that is
+  you. `/dispatch` does what the workflow did - the same checks, budgets,
+  labels, marker comments, and brief - and the workflow reads the line and
+  stands down. So a queued child you have not dispatched is not waiting on a
+  run; it is waiting on you. `/check-in` dispatches what is queued, and a
+  self-driving stretch keeps a scheduled session doing it while nobody has one
+  open.
+
+Under `session`, where each run happens is also yours. A subagent in this
+session is the default; a child session is worth it only when this session has
+to stay free, the run would crowd it out, or the person wants to watch the run
+themselves. `/dispatch` has the whole test. Decide it run by run and say why on
+the issue, rather than asking the person to pick.
+
+Two things change under `session` that are easy to miss. A role opens its pull
+request as the person, because there is no agent identity, so who opened a pull
+request says nothing about who wrote it: a role's work is the work on
+`claude/issue-<n>-*`, and that branch is what `project-guard` reads. And
+dispatching is spending. Every run is the subscription; a check-in that started
+five should say so, and the marker comments are where the person sees each one.
+
+Never change the runner yourself. Which runner spends the subscription is the
+person's call, made in a reviewed pull request.
+
 ## How to wake
 
 Session-side timers are not durable - see **What a driver does not do** - so
@@ -256,6 +288,13 @@ reminder.
   then it should wake a session that re-reads the objective's actual state
   rather than trusting the reminder's own text. Say plainly that a timer is
   standing in for a person, per **Promise a watch it cannot keep**.
+- **Waiting on a queued run, where the runner is `session`.** Nothing will
+  start it but a session, so this is not a wait at all: dispatch it. What
+  covers the hours nobody has a session open is a self-driving stretch's
+  scheduled session, which reads the repository's state fresh each time rather
+  than trusting a reminder's own text - and only the person starts a stretch.
+  Without one, a queued run waits for the next session they open; say so when
+  you report, so a quiet repository is not mistaken for a busy one.
 - **Waiting on runs during a self-driving stretch.** The other legitimate case,
   and the one **Self-driving** covers: a run that ends on its turn cap, blocks,
   or never starts raises no pull request event, so subscriptions alone cannot
@@ -273,7 +312,11 @@ mechanics do.
   of them is cancelled with nothing said. So queue one child at a time across
   every objective, see it start before queueing the next, and after each merge
   check that nothing queued was displaced. Removing and re-adding the queue
-  label re-raises the event; that is the handle when one was.
+  label re-raises the event; that is the handle when one was. Where the runner
+  is `session` there is no slot to lose a run from, and the rule holds for a
+  different reason: dispatch one run at a time, because the subscription is one
+  budget, and two children running at once can both build on a dependency
+  neither has merged.
 - **The order across objectives is yours.** Each orchestrator sees one
   objective; only you see two of them competing for the same slot. Prefer the
   child that unblocks the most downstream work, and say the order you chose on
@@ -282,7 +325,9 @@ mechanics do.
   A researcher or a designer produces documents, not code, and can run here as
   a subagent while an engineer holds the queue. That steps around the workflow's
   attempt counting, so it is the person's call, asked once. The output still
-  arrives as a pull request and still gets both reading passes.
+  arrives as a pull request and still gets both reading passes. Where the runner
+  is `session` this is simply how every role runs, and `/dispatch` books it
+  against the same budgets, so there is nothing to ask.
 
 ## Self-driving
 
@@ -290,9 +335,14 @@ A person may hand over, for a stretch, the calls that would normally wait for
 them, and ask for the work to keep moving without them - "take these through to
 done, make the judgment calls, write them down". Overnight is the obvious case;
 a working day spent elsewhere, or a hefty objective they want run end to end
-rather than supervised step by step, is the same thing. `/self-driving` is how
-they start one, and it names the objectives, when the stretch ends, and what
-they have already answered.
+rather than supervised step by step, is the same thing. They start one by
+asking: `/self-driving`, or the same thing in their own words - "keep these
+going overnight", "drive this through while I'm away this week". Recognise the
+second as the first, say that you are starting a stretch, and run it as the
+command says: it names the objectives, when the stretch ends, and what they
+have already answered. A request that is only "keep an eye on it" while they
+are still here is not a stretch; one that hands over calls for a period they
+will not be present for is.
 
 That is a real delegation, and it changes what follows and nothing else: the
 merge gate, both reading passes, and **What a revert does not undo** hold
@@ -319,6 +369,14 @@ fold into the loop.
   case the chain breaks. An hourly cadence alone leaves reviewable work idle for
   most of an hour, which across a long stretch is most of it. A wake that finds
   nothing changed says nothing.
+- **Outlast the session.** Reminders wake this session, and a stretch measured
+  in nights or days will outlive it. For one of those, also schedule a fresh
+  session on the repository every couple of hours that reads the decision log
+  first and continues the stretch under the delegation recorded there -
+  `/self-driving` gives the message. Where the runner is `session` this is what
+  keeps runs starting at all while nobody is here, so a long stretch there
+  without it is a stretch that stops when this session does. Turn it off at
+  close-out; a forgotten one keeps spending the subscription on nothing.
 - **Keep a ledger outside the conversation.** A long stretch outlives the
   session's context. A scratch file with one line per state change - what
   merged, what is queued, what comes next - is what every wake reads first, and

@@ -17,4 +17,4 @@ on:
 
 jobs:
   bootstrap:
-    uses: chamaya00/agent-factory/.github/workflows/bootstrap.yml@v1.40.0
+    uses: chamaya00/agent-factory/.github/workflows/bootstrap.yml@v1.42.0

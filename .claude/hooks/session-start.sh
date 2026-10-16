@@ -91,6 +91,38 @@ print()
 MISSING
 fi
 
+# Who starts a run here. In a repository whose runner is `session`, nothing
+# starts one but a session, so a queued issue is waiting on whoever just opened
+# this one - the fact a person coming back after a few hours most needs and is
+# least likely to guess, because under the workflow runner a queued issue was
+# one that would start on its own.
+runner="$(python3 -c 'import json; print(json.load(open(".claude/agent-factory.json")).get("runner") or "")' 2>/dev/null)"
+if [ "$runner" = "session" ]; then
+  queued="$(api "repos/$repo/issues?labels=agent%3Aqueued&state=open&per_page=50")" || queued=""
+  revise="$(api "repos/$repo/issues?labels=agent%3Arevise&state=open&per_page=50")" || revise=""
+  python3 - "$queued" "$revise" <<'QUEUED' 2>/dev/null
+import json, sys
+
+numbers = set()
+for raw in sys.argv[1:]:
+    try:
+        items = json.loads(raw) if raw else []
+    except Exception:
+        continue
+    for i in items if isinstance(items, list) else []:
+        if not isinstance(i, dict) or "pull_request" in i:
+            continue
+        labels = {l.get("name") for l in i.get("labels") or []}
+        if not labels & {"agent:running", "agent:blocked", "needs-decomposition"}:
+            numbers.add(i.get("number"))
+if numbers:
+    listed = " ".join(f"#{n}" for n in sorted(numbers))
+    print(f"Agents run from sessions here, and {len(numbers)} issue(s) are queued with nothing running them: {listed}")
+    print("Nothing starts them but a session. /check-in dispatches them, one at a time.")
+    print()
+QUEUED
+fi
+
 objectives="$(api "repos/$repo/issues?labels=objective&state=open&per_page=20")" || exit 0
 [ -n "$objectives" ] || exit 0
 

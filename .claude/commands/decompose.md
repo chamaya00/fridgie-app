@@ -14,6 +14,8 @@ Before invoking it, check three things and stop if any fails:
 2. The issue is not labelled `needs-decomposition` or `agent:blocked`. Either means a human already decided this one waits.
 3. The issue has no child issues already. Re-running the orchestrator on an issue it has already split produces duplicates, and duplicates are worse than nothing here because each one looks like real work.
 
+Where `.claude/agent-factory.json` says `runner` is `session`, run `/dispatch` on the issue instead: it makes the same three checks and also books the run against the objective's supervision budget, so a hand-started split counts exactly as a workflow one would.
+
 Then hand the issue to the orchestrator and let its own definition govern the rest. Do not decompose the issue yourself in this session - the whole point is that the role definition, not the conversation, decides how work gets split.
 
 Report what it produced: the child issue numbers, their role labels, and anything it refused to split.
