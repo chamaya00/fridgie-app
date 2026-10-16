@@ -153,7 +153,7 @@ input.in.bad { box-shadow: inset 0 0 0 2px var(--out); }
 .hero p b { color: var(--ink); }
 .fine, .hero .fine { font-size: 13.5px; color: var(--muted); margin: 18px 0 0; }
 
-.eyebrow { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.eyebrow { font-weight: 750; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
 .card h3 { margin: 0 0 4px; font-size: 16px; }
 .fine b { color: var(--ink); }
 .perm { list-style: none; padding: 0; margin: 0 0 8px; }
