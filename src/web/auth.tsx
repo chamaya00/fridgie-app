@@ -53,7 +53,7 @@ auth.get("/github/callback", async (c) => {
   const url = new URL(c.req.url);
   const raw = await getSignedCookie(c, c.env.COOKIE_SECRET, STATE_COOKIE);
   deleteCookie(c, STATE_COOKIE, { path: "/auth", secure: url.protocol === "https:" });
-  let expected: { state: string; next: string } | null = null;
+  let expected: { state: string; next: string } | null;
   try {
     expected = typeof raw === "string" ? (JSON.parse(raw) as { state: string; next: string }) : null;
   } catch {
