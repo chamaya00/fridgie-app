@@ -710,6 +710,156 @@ export function RemovePage({ item, clientRef, failed }: { item: ItemView; client
   );
 }
 
+// ---- consent and connected assistants ----------------------------------------
+
+/** The TopBar's Assistants-pages state (spec section 8): Inventory and Sign out. */
+function AssistantsTopBar() {
+  return (
+    <header class="bar">
+      <a class="mark" href="/">
+        {TERMS.appName}
+      </a>
+      <nav>
+        <a class="link" href="/">
+          {TERMS.inventory}
+        </a>
+        <a class="link" href="/auth/sign-out">
+          {TERMS.signOut}
+        </a>
+      </nav>
+    </header>
+  );
+}
+
+export interface ConsentView {
+  clientName: string;
+  redirectHost: string;
+  redirectIsLoopback: boolean;
+  canRead: boolean;
+  canWrite: boolean;
+  login: string;
+  handle: string;
+}
+
+/** ConsentCard (spec section 7, Consent). The host is in its own chip: the one thing an attacker cannot choose freely. */
+export function ConsentPage({ consent }: { consent: ConsentView }) {
+  return (
+    <main class="narrow-wrap" style="padding-top:8vh">
+      <div class="eyebrow">{TERMS.appName}</div>
+      <h1 class="page">Connect {consent.clientName} to your Fridgie?</h1>
+      <p class="lede" style="font-size:16px">
+        After you allow it, you'll go back to <span class="host">{consent.redirectHost}</span>. Only allow this if you just asked {consent.clientName} to
+        connect.
+      </p>
+      {consent.redirectIsLoopback ? (
+        <div class="alert" role="alert">
+          {TERMS.loopbackWarning}
+        </div>
+      ) : null}
+      <div class="card">
+        <h3>{consent.clientName} will be able to</h3>
+        <ul class="perm">
+          {consent.canRead ? (
+            <li>
+              <i class="dot" />
+              <span>{TERMS.canRead}</span>
+            </li>
+          ) : null}
+          {consent.canWrite ? (
+            <li>
+              <i class="dot" />
+              <span>{TERMS.canWrite}</span>
+            </li>
+          ) : null}
+        </ul>
+      </div>
+      <p class="fine" style="margin:0 0 6px">
+        Signed in as <b>@{consent.login}</b>. You can disconnect it any time from Assistants.
+      </p>
+      <form method="post" action="/authorize">
+        <input type="hidden" name="handle" value={consent.handle} />
+        <div class="formacts">
+          <button class="btn big primary" type="submit" name="decision" value="allow">
+            {TERMS.allow}
+          </button>
+          <button class="btn big" type="submit" name="decision" value="deny">
+            {TERMS.deny}
+          </button>
+        </div>
+      </form>
+    </main>
+  );
+}
+
+export function OAuthErrorPage({ message }: { message: string }) {
+  return (
+    <main class="narrow-wrap" style="padding-top:8vh">
+      <div class="eyebrow">{TERMS.appName}</div>
+      <h1 class="page">That didn't connect.</h1>
+      <p class="lede">{message}</p>
+    </main>
+  );
+}
+
+export interface AssistantView {
+  grantId: string;
+  name: string;
+  host: string;
+  connected: Date;
+}
+
+/** "Oct 16, 2026". */
+function longDate(at: Date): string {
+  return `${shortDate(at)}, ${at.getUTCFullYear()}`;
+}
+
+/** Connected assistants (spec section 7): one AssistantCard per grant, or the three steps to connect one. */
+export function AssistantsPage({ assistants, mcpUrl, flash }: { assistants: readonly AssistantView[]; mcpUrl: string; flash?: Flash }) {
+  return (
+    <>
+      <AssistantsTopBar />
+      <main class="narrow-wrap">
+        {flash ? <FlashBanner flash={flash} /> : null}
+        <h1 class="page">{TERMS.assistantsTitle}</h1>
+        {assistants.length === 0 ? (
+          <>
+            <p class="lede">{TERMS.assistantsLede}</p>
+            <div class="empty-box">
+              <h3>{TERMS.noAssistantsTitle}</h3>
+              <p>{TERMS.noAssistantsLede}</p>
+              <ol>
+                <li>{TERMS.connectStep1}</li>
+                <li>
+                  Paste <span class="host">{mcpUrl}</span>
+                </li>
+                <li>{TERMS.connectStep3}</li>
+              </ol>
+            </div>
+          </>
+        ) : (
+          <>
+            <p class="lede">
+              {TERMS.assistantsLede} {TERMS.assistantsLedeDisconnect}
+            </p>
+            {assistants.map((a) => (
+              <form class="card asst" method="post" action={`/assistants/${encodeURIComponent(a.grantId)}/disconnect`}>
+                <span class="nm">{a.name}</span>
+                <span class="meta">
+                  Returns to {a.host} · connected {longDate(a.connected)}
+                </span>
+                <button class="btn danger" type="submit">
+                  {TERMS.disconnect}
+                </button>
+              </form>
+            ))}
+            <p class="fine">{TERMS.assistantsFootnote}</p>
+          </>
+        )}
+      </main>
+    </>
+  );
+}
+
 export function NotFoundPage() {
   return (
     <main class="narrow-wrap">

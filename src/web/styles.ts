@@ -153,6 +153,24 @@ input.in.bad { box-shadow: inset 0 0 0 2px var(--out); }
 .hero p b { color: var(--ink); }
 .fine, .hero .fine { font-size: 13.5px; color: var(--muted); margin: 18px 0 0; }
 
+.eyebrow { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.fine b { color: var(--ink); }
+.perm { list-style: none; padding: 0; margin: 0 0 8px; }
+.perm li { padding: 12px 0; display: grid; grid-template-columns: 22px 1fr; gap: 10px; }
+.perm li + li { border-top: 2px solid var(--ground); }
+.perm .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); margin-top: 7px; }
+.host { overflow-wrap: anywhere; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; background: var(--chip); padding: 2px 6px; border-radius: 6px; color: var(--ink); }
+.asst { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+.asst .nm { font-size: 18px; font-weight: 650; }
+.asst .meta { grid-column: 1; color: var(--muted); font-size: 14px; }
+.asst .btn { grid-row: 1 / 3; grid-column: 2; }
+.empty-box { background: var(--surface); border-radius: 18px; padding: 20px 16px; }
+.empty-box h3 { margin: 0 0 6px; font-size: 18px; }
+.empty-box p { margin: 0 0 10px; color: var(--muted); font-size: 15px; }
+.empty-box ol { margin: 0; padding-left: 20px; color: var(--ink); font-size: 15px; }
+.empty-box ol li { margin: 4px 0; }
+
 .empty-list { background: var(--surface); border-radius: 18px; padding: 18px 16px; color: var(--muted); font-size: 15px; }
 .empty-list strong { color: var(--ink); display: block; margin-bottom: 4px; font-size: 16px; }
 .empty-list a { color: var(--ink); }
