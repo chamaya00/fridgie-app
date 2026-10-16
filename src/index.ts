@@ -37,7 +37,16 @@ app.use("*", async (c, next) => {
 // Hono types its context's ExecutionContext more loosely than workers-types; it is the same object.
 const ctxOf = (c: AppContext) => c.executionCtx as ExecutionContext;
 const authorizationServer = (c: AppContext) => oauthFor(new URL(c.req.url).origin).authorizationServer.fetch(c.req.raw, c.env, ctxOf(c));
-const resourceServer = (c: AppContext) => oauthFor(new URL(c.req.url).origin).resourceServer.fetch(c.req.raw, c.env, ctxOf(c));
+const resourceServer = async (c: AppContext) => {
+  const response = await oauthFor(new URL(c.req.url).origin).resourceServer.fetch(c.req.raw, c.env, ctxOf(c));
+  // The library's challenge names the path-suffixed metadata URL (RFC 9728
+  // section 3.1). ADR 0002 (c) 1 names the bare one; both serve the same document.
+  const challenge = response.headers.get("WWW-Authenticate");
+  if (!challenge) return response;
+  const copy = new Response(response.body, response);
+  copy.headers.set("WWW-Authenticate", challenge.replace(`/.well-known/oauth-protected-resource${MCP_PATH}"`, '/.well-known/oauth-protected-resource"'));
+  return copy;
+};
 
 app.all(TOKEN_PATH, authorizationServer);
 app.all(REGISTER_PATH, authorizationServer);
