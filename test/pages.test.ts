@@ -284,3 +284,21 @@ describe("Save failed", () => {
     expect(await eventsOf(user.id)).toEqual(before);
   });
 });
+
+describe("row order within a place", () => {
+  it("is out, low, untracked, ok, alphabetical inside each (#3 D6)", async () => {
+    const { user, client } = await signedIn();
+    // Names chosen so alphabetical order alone would put every state in the wrong place.
+    for (const [name, quantity] of [["Apple", "8"], ["Avocado", "8"], ["Banana", ""], ["Blueberry", ""], ["Cherry", "8"], ["Clementine", "8"], ["Date", "1"], ["Dill", "1"]]) {
+      await client.post("/items", { name: name as string, place: "fridge", quantity: quantity as string, unit: "", price: "", client_ref: crypto.randomUUID() });
+    }
+    for (const item of await listItems(env.DB, user.id, new Date())) {
+      if (item.name.startsWith("C")) await client.post(`/items/${item.id}/quantity`, { quantity: "2", set: "1", client_ref: crypto.randomUUID() });
+      if (item.name.startsWith("D")) await client.post(`/items/${item.id}/out`, { client_ref: crypto.randomUUID() });
+    }
+    await client.get("/"); // takes the last flash
+    const html = await client.html("/");
+    const rows = [...html.matchAll(/data-state="([a-z]+)">[^]*?<a class="name" href="[^"]+">([^<]+)<\/a>/g)].map((m) => `${m[2]}:${m[1]}`);
+    expect(rows).toEqual(["Date:out", "Dill:out", "Cherry:low", "Clementine:low", "Banana:untracked", "Blueberry:untracked", "Apple:ok", "Avocado:ok"]);
+  });
+});
