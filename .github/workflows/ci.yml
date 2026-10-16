@@ -106,11 +106,9 @@ jobs:
     uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.42.0
     with:
       check-name: 'checks'
-      commands: |
-        test -f CLAUDE.md
-        test -f .claude/agent-factory.json
-        test -d .claude/agents && test -d .claude/skills && test -d .claude/commands
-        test -d docs/research && test -d docs/design && test -d docs/decisions
-        test -d docs/memory
-        test -x scripts/design-render && test -x scripts/app-render && test -x scripts/contrast
-        unexpected="$(git ls-files | grep -Ev '^(README\.md|CLAUDE\.md|\.github/|\.claude/|docs/|scripts/)' || true)"; if [ -n "$unexpected" ]; then echo "::error::Product code has landed and this placeholder gate does not test it: $unexpected. Replace the commands below with the project's real checks - see the comment at the top of this file. Branch protection does not need re-pointing; the check name does not change."; exit 1; fi
+      # Node path, per ADR 0003 `## Gate commands`. Swapped in by the driver on
+      # top of #7's head under O4 (#3). What publishes Fridgie (Workers Builds)
+      # and how this gate covers it is answered in ADR 0003, "Does the gate run
+      # what publishes it?".
+      node-version: '24'
+      checks: 'typecheck,lint,test,build'
