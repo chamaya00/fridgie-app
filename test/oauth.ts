@@ -124,8 +124,8 @@ export async function connectAssistant(browser: Client, scope = "mcp:read mcp:wr
 }
 
 /** An MCP SDK client connected to /mcp with this token, offering exactly this protocol version. */
-export async function mcpClient(token: string, protocolVersion = "2025-11-25"): Promise<McpClient> {
-  const transport = new StreamableHTTPClientTransport(new URL(RESOURCE), {
+export async function mcpClient(token: string, protocolVersion = "2025-11-25", origin = ORIGIN): Promise<McpClient> {
+  const transport = new StreamableHTTPClientTransport(new URL(`${origin}/mcp`), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },
     fetch: (url, init) => call(String(url), init),
   });
