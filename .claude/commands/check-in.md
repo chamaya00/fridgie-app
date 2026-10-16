@@ -56,7 +56,33 @@ If anything in this check-in made you reach for a run log, say so on the
 parent issue. That is a defect in the brief and it is the only way it gets
 fixed.
 
-## 4. Report, then say what happens next
+## 4. Start what is queued, where runs happen in sessions
+
+Read `runner` in `.claude/agent-factory.json`.
+
+Anything but `session` means the agent-run workflow starts runs, and this step
+is only a look at whether it did: a child labelled `agent:queued` for hours,
+with no `agent:running` and no newer marker comment, is a run that never
+started, and saying so on the parent is the step.
+
+Where it is `session`, nothing starts a run but a session, so this is the step
+that moves the work. One run at a time, each through `/dispatch`, reading what
+came back before starting the next:
+
+1. An objective labelled `agent:queued`, or one with a child merged after its
+   newest supervision marker. The orchestrator decides what the merge made
+   ready and queues it, so it goes first.
+2. Each child labelled `agent:revise`, then each labelled `agent:queued`, in
+   the order the brief gives - or, across objectives, the one that unblocks the
+   most.
+3. An issue at `agent:running` whose newest marker is more than two hours old
+   with no live run behind it. `/dispatch` hands that back rather than
+   starting it again.
+
+Stop when nothing queued may run, or when what is next needs the person. Say
+how many runs this check-in started: each one is the subscription.
+
+## 5. Report, then say what happens next
 
 Follow **Report in prose, not in status** and **Say what happens next, every
 turn** in the skill. Say plainly whether anything is now waiting on the

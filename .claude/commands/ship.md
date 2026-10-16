@@ -98,6 +98,11 @@ up, and look again next time you touch the repository. If they failed, that is
 this repository's newest problem and it belongs to whoever just merged - not to
 the pull request, which is closed and was not wrong.
 
+Where `.claude/agent-factory.json` says `runner` is `session`, the first of
+those wakes is yours rather than a workflow's: once this batch is merged, run
+`/dispatch` on the objective - one supervision run for the batch, not one per
+merge - so the orchestrator queues what the merge made ready.
+
 Then say whether the objective is now met or waiting on another child.
 
 If you merged the last child, the objective is finished but not closed -

@@ -58,7 +58,7 @@ on:
 
 jobs:
   agent:
-    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.40.0
+    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.42.0
     with:
       issue-number: ${{ inputs.issue-number || '' }}
       max-turns: 80

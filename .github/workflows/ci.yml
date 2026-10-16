@@ -103,7 +103,7 @@ on:
 
 jobs:
   ci:
-    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.40.0
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.42.0
     with:
       check-name: 'checks'
       commands: |

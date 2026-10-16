@@ -1,6 +1,7 @@
 {
-  "$comment": "What this repository took from the factory, and when. /update-agents reads the version here, compares it against the factory release you name, and proposes the difference as a pull request. The roles in .claude/agents/, the skills in .claude/skills/, and the commands in .claude/commands/ are the real thing; this is the record of where they came from. One field is read at run time: `labels` is the vocabulary this release's preflight matches on, and the session-start hook compares it against the labels the repository actually has - because only `bootstrap` creates a label, and only a person can run `bootstrap`.",
-  "version": "v1.40.0",
+  "$comment": "What this repository took from the factory, and when. /update-agents reads the version here, compares it against the factory release you name, and proposes the difference as a pull request. The roles in .claude/agents/, the skills in .claude/skills/, and the commands in .claude/commands/ are the real thing; this is the record of where they came from. Two fields are read at run time. `labels` is the vocabulary this release's preflight matches on, and the session-start hook compares it against the labels the repository actually has - because only `bootstrap` creates a label, and only a person can run `bootstrap`. `runner` says who starts an agent run: `session` means a session does, through /dispatch, and the agent-run workflow stands down; `actions` means a label starts the workflow, which spends the CLAUDE_CODE_OAUTH_TOKEN secret. It is this repository's setting rather than the release's, and /update-agents keeps whatever it says.",
+  "version": "v1.42.0",
+  "runner": "session",
   "labels": [
     "objective",
     "agent:queued",
@@ -40,7 +41,8 @@
     "update-agents",
     "ship",
     "check-in",
-    "self-driving"
+    "self-driving",
+    "dispatch"
   ],
   "hooks": [
     "session-start"

@@ -31,4 +31,4 @@ on:
 
 jobs:
   guard:
-    uses: chamaya00/agent-factory/.github/workflows/project-guard.yml@v1.40.0
+    uses: chamaya00/agent-factory/.github/workflows/project-guard.yml@v1.42.0
