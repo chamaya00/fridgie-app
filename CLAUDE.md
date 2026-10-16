@@ -18,14 +18,21 @@ when running low.
 
 ## Stack
 
-Not chosen yet. Provisioning fills this in when the repository already answers
-it - a manifest, a lockfile, code that is already here - and leaves this
-sentence standing when it does not. A greenfield repository is asked for its
-stack before anybody could know it, and a guess written here reads exactly like
-a decision somebody made.
+TypeScript on Cloudflare Workers, as one Worker that serves the phone web app
+(server-rendered with Hono), the MCP server for assistants (`/mcp`, the MCP
+TypeScript SDK v2), and the OAuth 2.1 authorization server
+(`@cloudflare/workers-oauth-provider`). Data lives in Cloudflare D1 (SQLite),
+OAuth grants in Workers KV. Tooling runs on Node.js 24 with npm. Hosted on the
+Workers Free plan and deployed by Cloudflare Workers Builds, with no workflow
+file.
 
-Choosing it changes a category, so it arrives as an ADR under
-`docs/decisions/`, and this section is rewritten in the same pull request.
+The decisions and their reasons:
+[0001 agent protocol](docs/decisions/0001-agent-protocol-mcp.md),
+[0002 identity and auth](docs/decisions/0002-identity-github-sign-in-and-oauth-for-agents.md),
+[0003 stack and gate commands](docs/decisions/0003-stack-typescript-on-workers.md),
+[0004 hosting and owner steps](docs/decisions/0004-hosting-cloudflare-workers-free.md).
+Changing any of them is a new ADR under `docs/decisions/`, and this section is
+rewritten in the same pull request.
 
 Nothing publishes this repository yet either. When something does, the question
 that matters is whether the gate runs what publishes it - the comment at the
