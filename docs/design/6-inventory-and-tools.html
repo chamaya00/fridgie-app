@@ -1,0 +1,559 @@
+<!doctype html>
+<!--
+  Design mock for issue #6. A drawing made of markup: nothing imports it, it
+  reaches no user, and it is not the implementation. Specification:
+  6-inventory-and-tools.md beside this file.
+
+  One file, every state. The state shown is the data-state attribute on <html>
+  (default: inventory). data-theme="dark" draws the dark theme. The document
+  says how each picture in 6-shots/ was made from this file.
+-->
+<html lang="en" data-state="inventory" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fridgie mock, issue 6</title>
+<style>
+  :root {
+    --ground: #F5F2EA;  --surface: #FCFAF5;  --chip: #EAE5D8;
+    --ink: #1E1C17;     --muted: #5F5A4E;
+    --accent: #1E5B47;  --on-accent: #FFFFFF;
+    --low: #94560A;     --out: #B42318;      --untracked: #6B665A;
+    --error-bg: #FBE9E6; --error-ink: #8A1C12;
+    --flash-bg: #E3EEE8;
+    --gh: #1E1C17;      --on-gh: #FFFFFF;
+  }
+  html[data-theme="dark"] {
+    --ground: #15140F;  --surface: #1F1D17;  --chip: #2C2921;
+    --ink: #EFEBE1;     --muted: #A9A394;
+    --accent: #86CDB3;  --on-accent: #10241D;
+    --low: #E6A54E;     --out: #FF8C7F;      --untracked: #9C9686;
+    --error-bg: #3A1A16; --error-ink: #FFB4A9;
+    --flash-bg: #1E3229;
+    --gh: #EFEBE1;      --on-gh: #15140F;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--ink); }
+  body {
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .screen { display: none; min-height: 100vh; }
+  html[data-state="signed-out"]        #s-signed-out,
+  html[data-state="not-invited"]       #s-not-invited,
+  html[data-state="empty"]             #s-empty,
+  html[data-state="inventory"]         #s-inventory,
+  html[data-state="add-item"]          #s-add-item,
+  html[data-state="bought"]            #s-bought,
+  html[data-state="used"]              #s-used,
+  html[data-state="out"]               #s-out,
+  html[data-state="change-quantity"]   #s-change-quantity,
+  html[data-state="remove"]            #s-remove,
+  html[data-state="save-failed"]       #s-save-failed,
+  html[data-state="consent"]           #s-consent,
+  html[data-state="assistants"]        #s-assistants,
+  html[data-state="assistants-none"]   #s-assistants-none,
+  html[data-state="direction-b"]       #s-direction-b { display: block; }
+
+  /* ---- top bar ---- */
+  .bar { display: flex; align-items: center; gap: 16px; padding: 10px 16px; max-width: 1040px; margin: 0 auto; }
+  .mark { font-weight: 750; font-size: 17px; letter-spacing: -0.01em; color: var(--ink); text-decoration: none; }
+  .bar nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .bar nav a.link { color: var(--muted); text-decoration: none; font-size: 15px; padding: 8px 10px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 40px; padding: 0 16px; border: 0; border-radius: 20px;
+    font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none;
+    background: var(--chip); color: var(--ink);
+  }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.big { height: 52px; border-radius: 26px; padding: 0 24px; font-size: 17px; }
+  .btn.gh { background: var(--gh); color: var(--on-gh); }
+  .btn.quiet { background: transparent; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  .btn.danger { background: transparent; color: var(--out); box-shadow: inset 0 0 0 2px var(--out); }
+  .btn.danger-fill { background: var(--out); color: var(--surface); }
+  .btn:focus-visible, a:focus-visible, input:focus-visible, label.seg:focus-within {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .focus-demo { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 48px; }
+  .narrow-wrap { max-width: 520px; margin: 0 auto; padding: 0 16px 48px; }
+
+  /* ---- the summary sentence: the page's one typographic lead ---- */
+  .summary { margin: 14px 0 20px; font-size: 25px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; max-width: 22ch; }
+  .summary .w-low { color: var(--low); }
+  .summary .w-out { color: var(--out); }
+  .summary small { display: block; margin-top: 6px; font-size: 14px; font-weight: 400; letter-spacing: 0; color: var(--muted); }
+
+  /* ---- groups and rows ---- */
+  .groups { display: grid; gap: 18px; }
+  .group h2 {
+    margin: 0 0 6px 2px; font-size: 13px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    color: var(--muted); display: flex; gap: 8px;
+  }
+  .group h2 span { font-weight: 500; letter-spacing: 0.02em; }
+  .list { background: var(--surface); border-radius: 18px; overflow: hidden; }
+  .row {
+    display: grid; grid-template-columns: 18px 1fr auto; column-gap: 10px; row-gap: 8px;
+    padding: 11px 14px 11px 12px; align-items: start;
+  }
+  .row + .row { border-top: 2px solid var(--ground); }
+  .mk { width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; }
+  .mk-out { background: var(--out); }
+  .mk-low { box-shadow: inset 0 0 0 2px var(--low); background: linear-gradient(to top, var(--low) 45%, transparent 45%); }
+  .mk-untracked { border: 2px dashed var(--untracked); }
+  .name { font-size: 17px; font-weight: 600; color: var(--ink); text-decoration: none; display: block; line-height: 22px; }
+  .why { display: block; font-size: 13.5px; line-height: 18px; color: var(--muted); margin-top: 1px; }
+  .why b { font-weight: 700; }
+  .why .t-low { color: var(--low); }
+  .why .t-out { color: var(--out); }
+  .why .t-untracked { color: var(--untracked); }
+  .qty { text-align: right; line-height: 1; padding-top: 1px; }
+  .qty .n { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .qty .u { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .qty.stale .n { color: var(--muted); font-weight: 500; }
+  .qty.zero .n { color: var(--out); }
+  .acts { grid-column: 2 / 4; display: flex; gap: 8px; }
+  .acts .btn { height: 36px; padding: 0 14px; font-size: 14.5px; }
+  .row.fresh { background: var(--flash-bg); }
+
+  .flash {
+    display: flex; gap: 12px; align-items: center; margin: 10px 0 0; padding: 12px 14px; border-radius: 14px;
+    background: var(--flash-bg); color: var(--ink); font-size: 15px;
+  }
+  .flash a { margin-left: auto; color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .alert { padding: 14px; border-radius: 14px; background: var(--error-bg); color: var(--error-ink); font-size: 15px; margin: 0 0 18px; }
+  .alert b { display: block; font-size: 16px; margin-bottom: 2px; }
+
+  /* ---- forms ---- */
+  .back { display: inline-block; color: var(--muted); text-decoration: none; font-size: 15px; padding: 10px 0; }
+  h1.page { margin: 6px 0 4px; font-size: 32px; line-height: 1.1; font-weight: 750; letter-spacing: -0.03em; }
+  .lede { color: var(--muted); margin: 0 0 20px; font-size: 15px; }
+  .field { margin: 0 0 16px; }
+  .field > label, .field > .lbl { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .field .hint { font-size: 13px; color: var(--muted); margin-top: 5px; }
+  .opt { font-weight: 400; color: var(--muted); }
+  input.in {
+    width: 100%; height: 48px; border: 0; border-radius: 12px; padding: 0 14px;
+    background: var(--surface); color: var(--ink); font: inherit; font-size: 17px;
+    box-shadow: inset 0 0 0 2px var(--chip);
+  }
+  input.in.bad { box-shadow: inset 0 0 0 2px var(--out); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .money { position: relative; }
+  .money span { position: absolute; left: 14px; top: 13px; color: var(--muted); font-size: 17px; }
+  .money input { padding-left: 28px; }
+  .segs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; background: var(--chip); border-radius: 14px; padding: 4px; }
+  label.seg { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 10px; font-weight: 600; font-size: 16px; color: var(--muted); }
+  label.seg input { position: absolute; opacity: 0; }
+  label.seg.on { background: var(--surface); color: var(--ink); }
+  .stepper { display: grid; grid-template-columns: 56px 1fr 56px; gap: 10px; align-items: center; }
+  .stepper .btn { height: 56px; border-radius: 16px; font-size: 26px; padding: 0; }
+  .stepper input { text-align: center; font-size: 28px; font-weight: 650; height: 56px; font-variant-numeric: tabular-nums; }
+  .formacts { display: flex; gap: 12px; align-items: center; margin-top: 22px; }
+  .card { background: var(--surface); border-radius: 18px; padding: 16px; margin: 0 0 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0 0 12px; color: var(--muted); font-size: 14.5px; }
+  .hist { list-style: none; margin: 0; padding: 0; font-size: 14.5px; }
+  .hist li { display: flex; gap: 10px; padding: 8px 0; color: var(--ink); }
+  .hist li + li { border-top: 2px solid var(--ground); }
+  .hist .d { color: var(--muted); min-width: 56px; }
+  .hist .p { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .state-line { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; margin: 0 0 18px; }
+
+  /* ---- sign-in, not invited, consent ---- */
+  .hero { max-width: 520px; margin: 0 auto; padding: 18vh 24px 48px; }
+  .hero .mark { font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .hero h1 { font-size: 46px; line-height: 1.02; letter-spacing: -0.04em; margin: 14px 0 14px; font-weight: 780; }
+  .hero p { color: var(--muted); font-size: 16px; margin: 0 0 28px; max-width: 34ch; }
+  .fine, .hero .fine { font-size: 13.5px; color: var(--muted); margin: 18px 0 0; }
+  .perm { list-style: none; padding: 0; margin: 0 0 8px; }
+  .perm li { padding: 12px 0; display: grid; grid-template-columns: 22px 1fr; gap: 10px; }
+  .perm li + li { border-top: 2px solid var(--ground); }
+  .perm .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); margin-top: 7px; }
+  .host { overflow-wrap: anywhere; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 15px; background: var(--chip); padding: 2px 6px; border-radius: 6px; color: var(--ink); }
+
+  /* ---- connected assistants ---- */
+  .asst { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .asst .nm { font-size: 18px; font-weight: 650; }
+  .asst .meta { grid-column: 1; color: var(--muted); font-size: 14px; }
+  .asst .btn { grid-row: 1 / 3; grid-column: 2; }
+  .empty-box { background: var(--surface); border-radius: 18px; padding: 20px 16px; }
+  .empty-box h3 { margin: 0 0 6px; font-size: 18px; }
+  .empty-box p { margin: 0 0 10px; color: var(--muted); font-size: 15px; }
+  .empty-box ol { margin: 0; padding-left: 20px; color: var(--ink); font-size: 15px; }
+  .empty-box ol li { margin: 4px 0; }
+
+  /* ---- empty inventory ---- */
+  .empty-list { background: var(--surface); border-radius: 18px; padding: 18px 16px; color: var(--muted); font-size: 15px; }
+  .empty-list strong { color: var(--ink); display: block; margin-bottom: 4px; font-size: 16px; }
+
+  /* ---- direction B: shelf tiles (for comparison, not recommended) ---- */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { border-radius: 18px; padding: 14px; min-height: 118px; display: flex; flex-direction: column; background: var(--surface); }
+  .tile .n { font-size: 40px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; margin-top: auto; font-variant-numeric: tabular-nums; }
+  .tile .nm { font-weight: 650; font-size: 16px; }
+  .tile .tag { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .tile.t-low { box-shadow: inset 0 0 0 3px var(--low); }
+  .tile.t-out { box-shadow: inset 0 0 0 3px var(--out); }
+  .tile.t-untracked { box-shadow: inset 0 0 0 2px var(--untracked); }
+
+  /* ---- wide ---- */
+  @media (min-width: 760px) {
+    .bar { padding: 18px 32px; }
+    .wrap { padding: 0 32px 64px; }
+    .summary { font-size: 52px; margin: 28px 0 36px; max-width: 18ch; letter-spacing: -0.035em; }
+    .summary small { font-size: 16px; margin-top: 14px; }
+    .groups { grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .acts .btn { height: 38px; }
+    h1.page { font-size: 40px; }
+    .narrow-wrap { padding-top: 24px; }
+    .hero h1 { font-size: 64px; }
+    .tiles { grid-template-columns: repeat(3, 1fr); }
+  }
+  /* Motion is specified in the document, not drawn: a still frame is what a picture can show. */
+</style>
+</head>
+<body>
+
+<!-- ================= signed out ================= -->
+<main class="screen" id="s-signed-out" data-name="Signed out">
+  <div class="hero">
+    <div class="mark">Fridgie</div>
+    <h1>What's left in the fridge.</h1>
+    <p>Your fridge and pantry, what's running low, and what you've spent on it.</p>
+    <a class="btn big gh" href="#">Sign in with GitHub</a>
+    <p class="fine">Only invited GitHub accounts can sign in.</p>
+  </div>
+</main>
+
+<!-- ================= not invited ================= -->
+<main class="screen" id="s-not-invited" data-name="Not invited">
+  <div class="hero">
+    <div class="mark">Fridgie</div>
+    <h1>You're not invited.</h1>
+    <p>GitHub signed you in as <b style="color:var(--ink)">@jo-somebody</b>, but this Fridgie only lets in accounts its owner has invited. Nothing was saved about you.</p>
+    <a class="btn big" href="#">Try another GitHub account</a>
+    <p class="fine">If you think you should be on the list, ask whoever runs this Fridgie to add your GitHub account.</p>
+  </div>
+</main>
+
+<!-- ================= empty inventory ================= -->
+<main class="screen" id="s-empty" data-name="Empty inventory">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Assistants</a><a class="btn primary" href="#">+ Add item</a></nav>
+  </header>
+  <div class="wrap">
+    <p class="summary">Nothing here yet.<small>Add what's in your fridge and pantry, and Fridgie starts telling you what's low.</small></p>
+    <div class="groups">
+      <section class="group"><h2>Fridge <span>0 items</span></h2>
+        <div class="empty-list"><strong>Your fridge is empty here.</strong>Start with what you buy every week, like milk and eggs, so Fridgie can learn how often you buy them.</div>
+      </section>
+      <section class="group"><h2>Pantry <span>0 items</span></h2>
+        <div class="empty-list"><strong>Your pantry is empty here.</strong>Or tell your assistant: "I bought rice, coffee and olive oil."</div>
+      </section>
+    </div>
+    <p style="margin-top:22px"><a class="btn big primary" href="#">+ Add item</a></p>
+  </div>
+</main>
+
+<!-- ================= populated inventory ================= -->
+<main class="screen" id="s-inventory" data-name="Populated inventory">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Assistants</a><a class="btn primary" href="#">+ Add item</a></nav>
+  </header>
+  <div class="wrap">
+    <p class="summary"><span class="w-low">Milk and eggs are low.</span> <span class="w-out">Coffee beans are out.</span></p>
+    <div class="groups">
+      <section class="group" id="fridge"><h2>Fridge <span>3 items</span></h2>
+        <div class="list">
+          <div class="row" data-state="low" data-reason="cycle">
+            <i class="mk mk-low" aria-hidden="true"></i>
+            <div><a class="name" href="#">Milk</a><span class="why"><b class="t-low">Low</b> · due, usually every 7 days</span></div>
+            <div class="qty stale"><span class="n">4</span><span class="u">on record</span></div>
+            <div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div>
+          </div>
+          <div class="row" data-state="low" data-reason="count">
+            <i class="mk mk-low" aria-hidden="true"></i>
+            <div><a class="name" href="#">Eggs</a><span class="why"><b class="t-low">Low</b> · down to 2, you buy 12</span></div>
+            <div class="qty"><span class="n">2</span><span class="u">eggs</span></div>
+            <div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div>
+          </div>
+          <div class="row" data-state="ok">
+            <i></i>
+            <div><a class="name" href="#">Greek yogurt</a></div>
+            <div class="qty"><span class="n">6</span><span class="u">tubs</span></div>
+            <div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div>
+          </div>
+        </div>
+      </section>
+      <section class="group" id="pantry"><h2>Pantry <span>3 items</span></h2>
+        <div class="list">
+          <div class="row" data-state="out">
+            <i class="mk mk-out" aria-hidden="true"></i>
+            <div><a class="name" href="#">Coffee beans</a><span class="why"><b class="t-out">Out</b></span></div>
+            <div class="qty zero"><span class="n">0</span><span class="u">bags</span></div>
+            <div class="acts"><button class="btn">Bought</button></div>
+          </div>
+          <div class="row" data-state="untracked">
+            <i class="mk mk-untracked" aria-hidden="true"></i>
+            <div><a class="name" href="#">Olive oil</a><span class="why"><b class="t-untracked">Untracked</b> · no history yet</span></div>
+            <div class="qty stale"><span class="n">–</span><span class="u">not counted</span></div>
+            <div class="acts"><button class="btn">Bought</button><button class="btn">Set quantity</button></div>
+          </div>
+          <div class="row" data-state="ok">
+            <i></i>
+            <div><a class="name" href="#">Rice</a></div>
+            <div class="qty"><span class="n">2</span><span class="u">kg</span></div>
+            <div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ================= add item ================= -->
+<main class="screen" id="s-add-item" data-name="Add item">
+  <div class="narrow-wrap">
+    <a class="back" href="#">‹ Inventory</a>
+    <h1 class="page">Add item</h1>
+    <p class="lede">Only the name is required. A quantity records it as bought today.</p>
+    <div class="field"><label for="a-name">Name</label><input class="in focus-demo" id="a-name" value="Oat milk"></div>
+    <div class="field"><span class="lbl">Where it lives</span>
+      <div class="segs"><label class="seg on"><input type="radio" name="place" checked>Fridge</label><label class="seg"><input type="radio" name="place">Pantry</label></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="a-q">Quantity <span class="opt">(optional)</span></label><input class="in" id="a-q" inputmode="decimal" value="2"></div>
+      <div class="field"><label for="a-u">Unit <span class="opt">(optional)</span></label><input class="in" id="a-u" value="cartons"></div>
+    </div>
+    <div class="field"><label for="a-p">Price paid <span class="opt">(optional)</span></label>
+      <div class="money"><span>$</span><input class="in" id="a-p" inputmode="decimal" value="5.98"></div>
+      <div class="hint">What you paid for all of them, in US dollars.</div>
+    </div>
+    <div class="formacts"><button class="btn big primary">Add oat milk</button><a class="btn quiet" href="#">Cancel</a></div>
+  </div>
+</main>
+
+<!-- ================= bought ================= -->
+<main class="screen" id="s-bought" data-name="Bought">
+  <div class="narrow-wrap">
+    <a class="back" href="#">‹ Inventory</a>
+    <h1 class="page">Bought eggs</h1>
+    <p class="lede">Filled in from your last purchase, on Oct 2. Change anything that's different.</p>
+    <div class="two">
+      <div class="field"><label for="b-q">Quantity</label><input class="in" id="b-q" inputmode="decimal" value="12"></div>
+      <div class="field"><label for="b-p">Price paid <span class="opt">(optional)</span></label>
+        <div class="money"><span>$</span><input class="in" id="b-p" inputmode="decimal" value="4.29"></div></div>
+    </div>
+    <div class="field"><label for="b-d">When</label><input class="in" id="b-d" value="Today, Oct 16"><div class="hint">Change it to the receipt's date if you're catching up.</div></div>
+    <div class="formacts"><button class="btn big primary">Save purchase</button><a class="btn quiet" href="#">Cancel</a></div>
+    <p class="fine">Purchases can't be edited once saved. If a count is wrong afterwards, set the quantity on the item's page.</p>
+  </div>
+</main>
+
+<!-- ================= used (after one tap) ================= -->
+<main class="screen" id="s-used" data-name="Used">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Assistants</a><a class="btn primary" href="#">+ Add item</a></nav>
+  </header>
+  <div class="wrap">
+    <div class="flash" role="status">Used 1 Greek yogurt. 5 tubs left.<a href="#">Change</a></div>
+    <p class="summary"><span class="w-low">Milk and eggs are low.</span> <span class="w-out">Coffee beans are out.</span></p>
+    <div class="groups">
+      <section class="group"><h2>Fridge <span>3 items</span></h2>
+        <div class="list">
+          <div class="row"><i class="mk mk-low"></i><div><a class="name" href="#">Milk</a><span class="why"><b class="t-low">Low</b> · due, usually every 7 days</span></div><div class="qty stale"><span class="n">4</span><span class="u">on record</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+          <div class="row"><i class="mk mk-low"></i><div><a class="name" href="#">Eggs</a><span class="why"><b class="t-low">Low</b> · down to 2, you buy 12</span></div><div class="qty"><span class="n">2</span><span class="u">eggs</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+          <div class="row fresh"><i></i><div><a class="name" href="#">Greek yogurt</a></div><div class="qty"><span class="n">5</span><span class="u">tubs</span></div><div class="acts"><button class="btn">Bought</button><button class="btn focus-demo">Used</button><button class="btn">Out</button></div></div>
+        </div>
+      </section>
+      <section class="group"><h2>Pantry <span>3 items</span></h2>
+        <div class="list">
+          <div class="row"><i class="mk mk-out"></i><div><a class="name" href="#">Coffee beans</a><span class="why"><b class="t-out">Out</b></span></div><div class="qty zero"><span class="n">0</span><span class="u">bags</span></div><div class="acts"><button class="btn">Bought</button></div></div>
+          <div class="row"><i class="mk mk-untracked"></i><div><a class="name" href="#">Olive oil</a><span class="why"><b class="t-untracked">Untracked</b> · no history yet</span></div><div class="qty stale"><span class="n">–</span><span class="u">not counted</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Set quantity</button></div></div>
+          <div class="row"><i></i><div><a class="name" href="#">Rice</a></div><div class="qty"><span class="n">2</span><span class="u">kg</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ================= out (after one tap) ================= -->
+<main class="screen" id="s-out" data-name="Out">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Assistants</a><a class="btn primary" href="#">+ Add item</a></nav>
+  </header>
+  <div class="wrap">
+    <div class="flash" role="status">Milk marked out.<a href="#">Set quantity</a></div>
+    <p class="summary"><span class="w-low">Eggs are low.</span> <span class="w-out">Milk and coffee beans are out.</span></p>
+    <div class="groups">
+      <section class="group"><h2>Fridge <span>3 items</span></h2>
+        <div class="list">
+          <div class="row fresh"><i class="mk mk-out"></i><div><a class="name" href="#">Milk</a><span class="why"><b class="t-out">Out</b></span></div><div class="qty zero"><span class="n">0</span><span class="u">cartons</span></div><div class="acts"><button class="btn">Bought</button></div></div>
+          <div class="row"><i class="mk mk-low"></i><div><a class="name" href="#">Eggs</a><span class="why"><b class="t-low">Low</b> · down to 2, you buy 12</span></div><div class="qty"><span class="n">2</span><span class="u">eggs</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+          <div class="row"><i></i><div><a class="name" href="#">Greek yogurt</a></div><div class="qty"><span class="n">6</span><span class="u">tubs</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+        </div>
+      </section>
+      <section class="group"><h2>Pantry <span>3 items</span></h2>
+        <div class="list">
+          <div class="row"><i class="mk mk-out"></i><div><a class="name" href="#">Coffee beans</a><span class="why"><b class="t-out">Out</b></span></div><div class="qty zero"><span class="n">0</span><span class="u">bags</span></div><div class="acts"><button class="btn">Bought</button></div></div>
+          <div class="row"><i class="mk mk-untracked"></i><div><a class="name" href="#">Olive oil</a><span class="why"><b class="t-untracked">Untracked</b> · no history yet</span></div><div class="qty stale"><span class="n">–</span><span class="u">not counted</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Set quantity</button></div></div>
+          <div class="row"><i></i><div><a class="name" href="#">Rice</a></div><div class="qty"><span class="n">2</span><span class="u">kg</span></div><div class="acts"><button class="btn">Bought</button><button class="btn">Used</button><button class="btn">Out</button></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- ================= change quantity (item page) ================= -->
+<main class="screen" id="s-change-quantity" data-name="Change quantity">
+  <div class="narrow-wrap">
+    <a class="back" href="#">‹ Inventory</a>
+    <h1 class="page">Milk</h1>
+    <div class="state-line"><i class="mk mk-low" style="margin:0"></i><span><b style="color:var(--low)">Low</b> · due, usually every 7 days. Last bought 6 days ago.</span></div>
+    <div class="card">
+      <h3>How many are there?</h3>
+      <p>Fridgie has 4 cartons on record, but you haven't logged using any. Count what's there and set it.</p>
+      <div class="stepper"><button class="btn">−</button><input class="in focus-demo" value="1" inputmode="decimal" aria-label="Quantity"><button class="btn">+</button></div>
+      <div class="formacts" style="margin-top:14px"><button class="btn primary">Set to 1 carton</button></div>
+    </div>
+    <div class="card">
+      <h3>Warn me when it's down to</h3>
+      <p>Leave it blank and Fridgie warns at a quarter of your last purchase. For 1 carton, that is only when it runs out.</p>
+      <div class="two"><input class="in" placeholder="0" inputmode="decimal" aria-label="Low at"><button class="btn" style="height:48px">Save</button></div>
+    </div>
+    <div class="card">
+      <h3>Threw some away</h3>
+      <p>Counts as gone without being used, so your spending shows what was wasted.</p>
+      <div class="two"><input class="in" value="1" inputmode="decimal" aria-label="Amount thrown away"><button class="btn" style="height:48px">Record</button></div>
+    </div>
+    <div class="card">
+      <h3>History</h3>
+      <ul class="hist">
+        <li><span class="d">Oct 10</span>Bought 1<span class="p">$3.49</span></li>
+        <li><span class="d">Oct 3</span>Bought 1<span class="p">$3.49</span></li>
+        <li><span class="d">Sep 26</span>Bought 1<span class="p">$3.29</span></li>
+        <li><span class="d">Sep 19</span>Bought 1<span class="p">$3.29</span></li>
+      </ul>
+    </div>
+    <div class="formacts" style="justify-content:space-between"><a class="btn quiet" href="#">Rename or move to pantry</a><a class="btn danger" href="#">Remove milk</a></div>
+  </div>
+</main>
+
+<!-- ================= remove (confirmation) ================= -->
+<main class="screen" id="s-remove" data-name="Remove item">
+  <div class="narrow-wrap" style="padding-top:12vh">
+    <h1 class="page">Remove milk?</h1>
+    <p class="lede" style="font-size:16px">Milk leaves your fridge list and stops showing as low. Fridgie keeps what you bought and used, for your spending.</p>
+    <p class="lede" style="font-size:16px">Add "Milk" again later and it starts with no history.</p>
+    <div class="formacts"><button class="btn big danger-fill">Remove milk</button><a class="btn big" href="#">Keep it</a></div>
+  </div>
+</main>
+
+<!-- ================= save failed ================= -->
+<main class="screen" id="s-save-failed" data-name="Save failed">
+  <div class="narrow-wrap">
+    <a class="back" href="#">‹ Inventory</a>
+    <h1 class="page">Bought eggs</h1>
+    <div class="alert" role="alert"><b>That didn't save.</b>Nothing was recorded. Your entries are still here, so try again. If the first try did get through, trying again won't count it twice.</div>
+    <div class="two">
+      <div class="field"><label for="f-q">Quantity</label><input class="in" id="f-q" value="12"></div>
+      <div class="field"><label for="f-p">Price paid <span class="opt">(optional)</span></label>
+        <div class="money"><span>$</span><input class="in" id="f-p" value="4.29"></div></div>
+    </div>
+    <div class="field"><label for="f-d">When</label><input class="in" id="f-d" value="Today, Oct 16"></div>
+    <div class="formacts"><button class="btn big primary">Try again</button><a class="btn quiet" href="#">Cancel</a></div>
+  </div>
+</main>
+
+<!-- ================= consent ================= -->
+<main class="screen" id="s-consent" data-name="Consent">
+  <div class="narrow-wrap" style="padding-top:8vh">
+    <div class="mark" style="font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Fridgie</div>
+    <h1 class="page" style="margin-top:12px">Connect Claude to your Fridgie?</h1>
+    <p class="lede" style="font-size:16px">After you allow it, you'll go back to <span class="host">claude.ai</span>. Only allow this if you just asked Claude to connect.</p>
+    <div class="card">
+      <h3>Claude will be able to</h3>
+      <ul class="perm">
+        <li><i class="dot"></i><span>See your fridge and pantry, and what's low or out</span></li>
+        <li><i class="dot"></i><span>Record what you buy and use, change quantities, add and remove items</span></li>
+      </ul>
+    </div>
+    <p class="fine" style="margin:0 0 6px">Signed in as <b style="color:var(--ink)">@chamaya00</b>. You can disconnect it any time from Assistants.</p>
+    <div class="formacts"><button class="btn big primary">Allow</button><button class="btn big">Deny</button></div>
+  </div>
+</main>
+
+<!-- ================= connected assistants: one ================= -->
+<main class="screen" id="s-assistants" data-name="Connected assistants">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Inventory</a><a class="link" href="#">Sign out</a></nav>
+  </header>
+  <div class="narrow-wrap">
+    <h1 class="page">Connected assistants</h1>
+    <p class="lede">These can read and change your Fridgie. Disconnect one and it has to ask you again.</p>
+    <div class="card asst">
+      <span class="nm">Claude</span>
+      <span class="meta">Returns to claude.ai · connected Oct 16, 2026</span>
+      <button class="btn danger">Disconnect</button>
+    </div>
+    <p class="fine">Removing Fridgie inside Claude doesn't disconnect it here. This page is the one that does.</p>
+  </div>
+</main>
+
+<!-- ================= connected assistants: none ================= -->
+<main class="screen" id="s-assistants-none" data-name="Connected assistants, none">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="link" href="#">Inventory</a><a class="link" href="#">Sign out</a></nav>
+  </header>
+  <div class="narrow-wrap">
+    <div class="flash" role="status" style="margin-bottom:12px">Claude is disconnected.</div>
+    <h1 class="page">Connected assistants</h1>
+    <p class="lede">These can read and change your Fridgie.</p>
+    <div class="empty-box">
+      <h3>No assistants connected</h3>
+      <p>To use Fridgie from Claude:</p>
+      <ol>
+        <li>In Claude, open Settings › Connectors › Add custom connector.</li>
+        <li>Paste <span class="host">https://fridgie.example.workers.dev/mcp</span></li>
+        <li>Claude sends you back here to allow it.</li>
+      </ol>
+    </div>
+  </div>
+</main>
+
+<!-- ================= direction B (comparison only) ================= -->
+<main class="screen" id="s-direction-b" data-name="Direction B: shelf">
+  <header class="bar">
+    <a class="mark" href="#">Fridgie</a>
+    <nav><a class="btn primary" href="#">+ Add</a></nav>
+  </header>
+  <div class="wrap">
+    <div class="group"><h2>Fridge</h2>
+      <div class="tiles">
+        <div class="tile t-low"><span class="nm">Milk</span><span class="tag" style="color:var(--low)">Low · due</span><span class="n" style="color:var(--muted)">4</span></div>
+        <div class="tile t-low"><span class="nm">Eggs</span><span class="tag" style="color:var(--low)">Low</span><span class="n">2</span></div>
+        <div class="tile"><span class="nm">Greek yogurt</span><span class="n">6</span></div>
+      </div>
+    </div>
+    <div class="group" style="margin-top:18px"><h2>Pantry</h2>
+      <div class="tiles">
+        <div class="tile t-out"><span class="nm">Coffee beans</span><span class="tag" style="color:var(--out)">Out</span><span class="n" style="color:var(--out)">0</span></div>
+        <div class="tile t-untracked"><span class="nm">Olive oil</span><span class="tag" style="color:var(--untracked)">Untracked</span><span class="n" style="color:var(--muted)">–</span></div>
+        <div class="tile"><span class="nm">Rice</span><span class="n">2</span></div>
+      </div>
+    </div>
+    <p class="fine">Tap a tile to open it. Bought, Used and Out live one level down.</p>
+  </div>
+</main>
+
+</body>
+</html>
