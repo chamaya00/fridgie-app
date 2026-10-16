@@ -9,7 +9,7 @@ export default tseslint.config(
     // Plain Node scripts: name the globals they use rather than add a package for them.
     files: ["scripts/**/*.mjs"],
     languageOptions: {
-      globals: { console: "readonly", process: "readonly", URL: "readonly", URLSearchParams: "readonly", crypto: "readonly", Request: "readonly", Response: "readonly", Headers: "readonly" },
+      globals: { console: "readonly", process: "readonly", URL: "readonly", URLSearchParams: "readonly", crypto: "readonly", Request: "readonly", Response: "readonly", Headers: "readonly", Buffer: "readonly", TextEncoder: "readonly" },
     },
   },
   {
