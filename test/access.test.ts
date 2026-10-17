@@ -12,6 +12,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const DEV_PATHS = ["/dev/session?next=/", "/dev/consent", "/dev/assistant"];
+
+/** OAuth clients registered in KV. */
+async function oauthClients(): Promise<number> {
+  return (await env.OAUTH_KV.list({ prefix: "client:" })).keys.length;
+}
+
 async function count(sql: string, ...binds: unknown[]): Promise<number> {
   return (await env.DB.prepare(sql).bind(...binds).first<{ n: number }>())?.n ?? 0;
 }
@@ -190,22 +197,33 @@ describe("the session-seeding mechanism", () => {
     expect(env.DEV_SESSION_SEEDING).toBeUndefined();
     const usersBefore = await count("SELECT COUNT(*) AS n FROM users");
     const sessionsBefore = await count("SELECT COUNT(*) AS n FROM sessions");
+    const clientsBefore = await oauthClients();
     for (const origin of ["https://fridgie.example.workers.dev", "http://localhost:8787", "http://127.0.0.1:8787"]) {
-      const client = new Client(env, origin);
-      const response = await client.get("/dev/session?next=/");
-      expect(response.status, origin).toBe(404);
-      expect(client.cookies.has(SESSION_COOKIE), origin).toBe(false);
+      for (const path of DEV_PATHS) {
+        const client = new Client(env, origin);
+        const response = await client.get(path);
+        expect(response.status, origin + path).toBe(404);
+        expect(client.cookies.has(SESSION_COOKIE), origin + path).toBe(false);
+      }
     }
+    expect(await oauthClients()).toBe(clientsBefore);
     expect(await count("SELECT COUNT(*) AS n FROM users WHERE github_id = ?1", DEV_GITHUB_ID)).toBe(0);
     expect(await count("SELECT COUNT(*) AS n FROM users")).toBe(usersBefore);
     expect(await count("SELECT COUNT(*) AS n FROM sessions")).toBe(sessionsBefore);
   });
 
   it("is refused on a deployed host even if the flag were set", async () => {
-    const client = new Client({ ...env, DEV_SESSION_SEEDING: "1" }, "https://fridgie.example.workers.dev");
-    const response = await client.get("/dev/session?next=/");
-    expect(response.status).toBe(404);
-    expect(client.cookies.has(SESSION_COOKIE)).toBe(false);
+    const clientsBefore = await oauthClients();
+    for (const path of DEV_PATHS) {
+      const client = new Client({ ...env, DEV_SESSION_SEEDING: "1" }, "https://fridgie.example.workers.dev");
+      const response = await client.get(path);
+      expect(response.status, path).toBe(404);
+      expect(client.cookies.has(SESSION_COOKIE), path).toBe(false);
+    }
+    // Signed in, too: /dev/assistant still writes no client and no grant.
+    const { client: owner } = await signedIn({ ...env, DEV_SESSION_SEEDING: "1" });
+    expect((await owner.get("/dev/assistant")).status).toBe(404);
+    expect(await oauthClients()).toBe(clientsBefore);
   });
 
   it("works only with the flag on localhost (the control that shows the refusals mean something)", async () => {
@@ -217,5 +235,14 @@ describe("the session-seeding mechanism", () => {
     const html = await client.html("/items/itm_seed_milk");
     expect(html).toContain("Milk");
     expect(inputValue(html, "client_ref")).toBeDefined();
+
+    const consent = await client.get("/dev/consent");
+    expect(consent.status).toBe(303);
+    expect(consent.headers.get("Location")).toMatch(/^\/authorize\?response_type=code&client_id=/);
+    expect(await client.html(consent.headers.get("Location") ?? "")).toContain("Connect Claude to your Fridgie?");
+
+    const assistant = await client.get("/dev/assistant");
+    expect(assistant.status).toBe(303);
+    expect(await client.html("/assistants")).toContain('<span class="nm">Claude</span>');
   });
 });

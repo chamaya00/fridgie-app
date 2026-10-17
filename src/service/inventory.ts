@@ -186,6 +186,17 @@ export async function getItem(db: D1Database, userId: string, itemId: string, no
   return view ?? null;
 }
 
+/** One item whether or not it was removed, or null when it is not this user's or does not exist. */
+export async function getItemIncludingRemoved(db: D1Database, userId: string, itemId: string, now: Date): Promise<ItemView | null> {
+  const row = await db
+    .prepare(`SELECT ${ITEM_COLUMNS} FROM items WHERE id = ?1 AND user_id = ?2`)
+    .bind(itemId, userId)
+    .first<ItemRow>();
+  if (!row) return null;
+  const [view] = await viewItems(db, userId, [row], now);
+  return view ?? null;
+}
+
 async function requireItem(db: D1Database, userId: string, itemId: string, now: Date): Promise<ItemView> {
   const item = await getItem(db, userId, itemId, now);
   if (!item) throw new ServiceError("not_found", "No such item.");

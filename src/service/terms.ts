@@ -102,6 +102,24 @@ export const TERMS = {
   // Remove
   keepIt: "Keep it",
 
+  // Consent and Connected assistants (spec section 7)
+  inventory: "Inventory",
+  allow: "Allow",
+  deny: "Deny",
+  canRead: "See your fridge and pantry, and what's low or out",
+  canWrite: "Record what you buy and use, change quantities, add and remove items",
+  loopbackWarning: "This sends access to an app on your computer.",
+  assistantsTitle: "Connected assistants",
+  assistantsLede: "These can read and change your Fridgie.",
+  assistantsLedeDisconnect: "Disconnect one and it has to ask you again.",
+  disconnect: "Disconnect",
+  assistantsFootnote: "Removing Fridgie inside Claude doesn't disconnect it here. This page is the one that does.",
+  noAssistantsTitle: "No assistants connected",
+  noAssistantsLede: "To use Fridgie from Claude:",
+  connectStep1: "In Claude, open Customize › Connectors › Add custom connector.",
+  connectStep3: "Claude sends you back here to allow it.",
+  consentExpired: "This request has expired or was already used. Go back to your assistant and connect again.",
+
   // Save failed
   saveFailedTitle: "That didn't save.",
   saveFailedBody: "Nothing was recorded. Your entries are still here, so try again. If the first try did get through, trying again won't count it twice.",

@@ -12,7 +12,15 @@ import { renderPage, SignedOutPage } from "./views";
 export const SESSION_COOKIE = "fridgie_session";
 export const FLASH_COOKIE = "fridgie_flash";
 
-export type AppEnv = { Bindings: Env; Variables: { user: User; sessionToken: string } };
+export type AppEnv = {
+  Bindings: Env;
+  Variables: {
+    user: User;
+    sessionToken: string;
+    /** Origins this response's forms may also post or redirect to (Consent's hand-back). */
+    formActionOrigins: string[];
+  };
+};
 export type AppContext = Context<AppEnv>;
 
 function secure(c: Context): boolean {
